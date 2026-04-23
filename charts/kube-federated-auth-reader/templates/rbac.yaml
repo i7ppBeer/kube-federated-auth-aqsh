@@ -1,0 +1,57 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+  labels:
+    app: kube-federated-auth-reader
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+rules:
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+  labels:
+    app: kube-federated-auth-reader
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.serviceAccountName }}
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kube-federated-auth-reader
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts/token"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kube-federated-auth-reader
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-kube-federated-auth-reader
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.serviceAccountName }}
+  namespace: {{ .Values.namespace }}

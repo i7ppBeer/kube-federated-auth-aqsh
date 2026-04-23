@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth
+  labels:
+    app: kube-federated-auth
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: kube-federated-auth
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: kube-federated-auth
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: kube-federated-auth
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+        - --config=/etc/kube-federated-auth/clusters.yaml
+        - --port=8443
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kube-federated-auth
+          readOnly: true
+        {{- if .Values.remoteClusters }}
+        - name: ca-certs
+          mountPath: /etc/kube-federated-auth/ca-certs
+          readOnly: true
+        - name: tokens
+          mountPath: /etc/kube-federated-auth/tokens
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Release.Name }}-kube-federated-auth-config
+      {{- if .Values.remoteClusters }}
+      - name: ca-certs
+        secret:
+          secretName: {{ .Release.Name }}-kube-federated-auth-certs
+          items:
+          {{- range .Values.remoteClusters }}
+          - key: {{ .name }}-ca.crt
+            path: {{ .name }}-ca.crt
+          {{- end }}
+      - name: tokens
+        secret:
+          secretName: {{ .Release.Name }}-kube-federated-auth-tokens
+          items:
+          {{- range .Values.remoteClusters }}
+          - key: {{ .name }}-token
+            path: {{ .name }}-token
+          {{- end }}
+      {{- end }}

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-aqsh
+  labels:
+    app: aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.aqsh.replicaCount }}
+  selector:
+    matchLabels:
+      app: aqsh
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: aqsh
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: aqsh
+        image: "{{ .Values.aqsh.image.repository }}:{{ .Values.aqsh.image.tag }}"
+        imagePullPolicy: {{ .Values.aqsh.image.pullPolicy }}
+        env:
+        - name: AQSH_MODE
+          value: {{ .Values.aqsh.mode | quote }}
+        - name: AQSH_REDIS_ADDR
+          value: "{{ .Release.Name }}-redis:{{ .Values.redis.service.port }}"
+        - name: AQSH_IDENTITY_HEADER
+          value: {{ .Values.aqsh.identityHeader | quote }}
+        - name: AQSH_GROUPS_HEADER
+          value: {{ .Values.aqsh.groupsHeader | quote }}
+        - name: AQSH_REQUIRE_IDENTITY
+          value: {{ .Values.aqsh.requireIdentity | quote }}
+        - name: AQSH_TASKS_CONFIG
+          value: "/etc/aqsh/tasks.yaml"
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.aqsh.resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/aqsh
+          readOnly: true
+        {{- if .Values.aqsh.scripts }}
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Release.Name }}-aqsh-config
+      {{- if .Values.aqsh.scripts }}
+      - name: scripts
+        configMap:
+          name: {{ .Release.Name }}-aqsh-scripts
+          defaultMode: 0755
+      {{- end }}

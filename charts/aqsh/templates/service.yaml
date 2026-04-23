@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-aqsh
+  labels:
+    app: aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  type: {{ .Values.aqsh.service.type }}
+  ports:
+  - port: {{ .Values.aqsh.service.port }}
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: aqsh
+    release: {{ .Release.Name }}
