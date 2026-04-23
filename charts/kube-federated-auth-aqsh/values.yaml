@@ -1,0 +1,148 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Combined chart: kube-federated-auth + aqsh (single Deployment)
+# ─────────────────────────────────────────────────────────────────────────────
+
+replicaCount: 1
+
+# ── kube-federated-auth ──────────────────────────────────────────────────────
+kubeFederatedAuth:
+  image:
+    repository: rophy/kube-federated-auth
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8443
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Cluster role: central, sub-same-group, or sub-isolated
+  clusterRole: central
+
+  # Cluster name for this deployment
+  clusterName: central
+
+  # Authorized clients (who can call this kube-federated-auth instance)
+  # Format: {cluster}/{namespace}/{serviceaccount}
+  # Use * as wildcard
+  authorizedClients:
+    - "central/*/*"
+
+  # Cache configuration
+  cache:
+    ttl: 60
+    maxEntries: 1000
+
+  # Token renewal configuration
+  renewal:
+    interval: "1h"
+    tokenDuration: "168h"  # 7 days
+    renewBefore: "48h"     # renew 48h before expiration
+
+  # Local cluster configuration (always present)
+  localCluster:
+    issuer: "https://kubernetes.default.svc.cluster.local"
+    caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+  # Remote clusters configuration
+  # Each entry should have: name, issuer, apiServer, caCert, bootstrapToken
+  remoteClusters: []
+  # Example:
+  # - name: sub-1-1
+  #   issuer: "https://sub-1-1.example.com:6443"
+  #   apiServer: "https://10.1.1.1:6443"
+  #   caCert: |
+  #     -----BEGIN CERTIFICATE-----
+  #     ...
+  #     -----END CERTIFICATE-----
+  #   bootstrapToken: "eyJhbGc..."
+
+# ── aqsh ─────────────────────────────────────────────────────────────────────
+aqsh:
+  image:
+    repository: rophy/aqsh
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Mode: "both", "api", or "worker"
+  mode: both
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # Identity and group headers (from reverse proxy / kube-auth-proxy)
+  identityHeader: "X-Forwarded-User"
+  groupsHeader: "X-Forwarded-Groups"
+  requireIdentity: true
+
+  # Tasks configuration
+  tasksConfig: |
+    tasks:
+      - name: example-task
+        script: /scripts/example.sh
+        description: "Example task"
+        allowed_groups:
+          - "system:authenticated"
+
+  # Scripts to mount
+  scripts: {}
+  #  example.sh: |
+  #    #!/bin/bash
+  #    echo "Hello from aqsh"
+  #    echo "Submitted by: $AQSH_SUBMITTER"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  persistence:
+    enabled: false
+    # size: 1Gi
+    # storageClass: ""
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# ── Reader (optional — deploy on sub clusters) ────────────────────────────────
+# Installs a lightweight ServiceAccount + RBAC for token review
+reader:
+  enabled: false
+  serviceAccountName: kube-federated-auth-reader
+  namespace: kube-system
+
+# ── Shared ServiceAccount ─────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: kube-federated-auth-aqsh
+  annotations: {}
