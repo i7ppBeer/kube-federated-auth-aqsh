@@ -1,0 +1,63 @@
+# Sub-1-2 Cluster Configuration
+# This cluster only knows sub-1-1 in the same group via 100.x network
+# Does NOT know sub-2-x clusters (network isolation)
+
+image:
+  repository: rophy/kube-federated-auth
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8443
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+clusterRole: sub-same-group
+clusterName: sub-1-2
+
+# Only accept requests from self and sub-1-1
+authorizedClients:
+  - "sub-1-2/*/*"
+  - "sub-1-1/*/*"
+
+cache:
+  ttl: 60
+  maxEntries: 1000
+
+renewal:
+  interval: "1h"
+  tokenDuration: "168h"
+  renewBefore: "48h"
+
+localCluster:
+  issuer: "https://kubernetes.default.svc.cluster.local"
+  caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+# Only knows sub-1-1 via 100.x network
+remoteClusters:
+  - name: sub-1-1
+    issuer: "https://sub-1-1.example.com:6443"
+    apiServer: "https://100.1.1.1:6443"  # 100.x network
+    caCert: |
+      -----BEGIN CERTIFICATE-----
+      # Replace with actual CA certificate for sub-1-1
+      -----END CERTIFICATE-----
+    bootstrapToken: "eyJhbGci..."  # Replace with actual bootstrap token
+
+# Note: sub-2-x clusters are NOT configured here
+# This ensures network isolation between group 1 and group 2
+
+serviceAccount:
+  create: true
+  name: kube-federated-auth
+  annotations: {}

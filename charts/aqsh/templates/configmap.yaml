@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-aqsh-config
+  labels:
+    app: aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+  tasks.yaml: |
+{{ .Values.aqsh.tasksConfig | indent 4 }}
+---
+{{- if .Values.aqsh.scripts }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-aqsh-scripts
+  labels:
+    app: aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+{{- range $name, $content := .Values.aqsh.scripts }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+{{- end }}
+{{- end }}
