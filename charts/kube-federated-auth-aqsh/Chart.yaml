@@ -1,0 +1,17 @@
+apiVersion: v2
+name: kube-federated-auth-aqsh
+description: Combined chart — kube-federated-auth + aqsh + Redis in a single Deployment
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - kubernetes
+  - authentication
+  - federation
+  - aqsh
+  - async
+  - queue
+  - shell
+  - redis
+maintainers:
+  - name: kube-federated-auth-aqsh

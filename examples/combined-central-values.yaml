@@ -1,0 +1,180 @@
+# Combined chart example — central cluster
+# Deploys kube-federated-auth + aqsh in a single Deployment
+
+replicaCount: 1
+
+kubeFederatedAuth:
+  image:
+    repository: rophy/kube-federated-auth
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8443
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  clusterRole: central
+  clusterName: central
+
+  authorizedClients:
+    - "central/*/*"
+    - "sub-1-1/*/*"
+    - "sub-1-2/*/*"
+    - "sub-2-1/*/*"
+    - "sub-2-2/*/*"
+
+  cache:
+    ttl: 60
+    maxEntries: 1000
+
+  renewal:
+    interval: "1h"
+    tokenDuration: "168h"
+    renewBefore: "48h"
+
+  localCluster:
+    issuer: "https://kubernetes.default.svc.cluster.local"
+    caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+  remoteClusters:
+    - name: sub-1-1
+      issuer: "https://sub-1-1.example.com:6443"
+      apiServer: "https://10.1.1.1:6443"
+      caCert: |
+        -----BEGIN CERTIFICATE-----
+        # Replace with actual CA certificate for sub-1-1
+        -----END CERTIFICATE-----
+      bootstrapToken: "eyJhbGci..."  # Replace with actual bootstrap token
+
+    - name: sub-1-2
+      issuer: "https://sub-1-2.example.com:6443"
+      apiServer: "https://10.1.1.2:6443"
+      caCert: |
+        -----BEGIN CERTIFICATE-----
+        # Replace with actual CA certificate for sub-1-2
+        -----END CERTIFICATE-----
+      bootstrapToken: "eyJhbGci..."
+
+    - name: sub-2-1
+      issuer: "https://sub-2-1.example.com:6443"
+      apiServer: "https://10.1.2.1:6443"
+      caCert: |
+        -----BEGIN CERTIFICATE-----
+        # Replace with actual CA certificate for sub-2-1
+        -----END CERTIFICATE-----
+      bootstrapToken: "eyJhbGci..."
+
+    - name: sub-2-2
+      issuer: "https://sub-2-2.example.com:6443"
+      apiServer: "https://10.1.2.2:6443"
+      caCert: |
+        -----BEGIN CERTIFICATE-----
+        # Replace with actual CA certificate for sub-2-2
+        -----END CERTIFICATE-----
+      bootstrapToken: "eyJhbGci..."
+
+aqsh:
+  image:
+    repository: rophy/aqsh
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  mode: both
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  identityHeader: "X-Forwarded-User"
+  groupsHeader: "X-Forwarded-Groups"
+  requireIdentity: true
+
+  tasksConfig: |
+    tasks:
+      - name: hello
+        script: /scripts/hello.sh
+        description: "Simple hello task"
+        allowed_groups:
+          - "system:authenticated"
+
+      - name: deploy
+        script: /scripts/deploy.sh
+        description: "Deployment task"
+        allowed_groups:
+          - "system:masters"
+          - "deployers"
+        inputs:
+          - name: environment
+            type: string
+            required: true
+            validation: "^(dev|staging|prod)$"
+          - name: version
+            type: string
+            required: true
+
+  scripts:
+    hello.sh: |
+      #!/bin/bash
+      echo "Hello from aqsh!"
+      echo "Task submitted by: $AQSH_SUBMITTER"
+      echo "Task ID: $AQSH_TASK_ID"
+      date
+
+    deploy.sh: |
+      #!/bin/bash
+      echo "Deploying to environment: $INPUT_ENVIRONMENT"
+      echo "Version: $INPUT_VERSION"
+      echo "Submitted by: $AQSH_SUBMITTER"
+      kubectl get pods -n $INPUT_ENVIRONMENT || true
+      echo "Deployment completed!"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  persistence:
+    enabled: false
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# reader is disabled on central — enable on sub clusters
+reader:
+  enabled: false
+  serviceAccountName: kube-federated-auth-reader
+  namespace: kube-system
+
+serviceAccount:
+  create: true
+  name: kube-federated-auth-aqsh
+  annotations: {}

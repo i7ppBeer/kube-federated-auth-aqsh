@@ -20,11 +20,21 @@
 
 ## 專案概述
 
-本專案提供三個 Helm charts：
+本專案提供四個 Helm charts：
 
-1. **kube-federated-auth**: Kubernetes 聯邦身份驗證伺服器
-2. **kube-federated-auth-reader**: 輕量級 ServiceAccount 與 RBAC 設定（供 sub cluster 使用）
-3. **aqsh**: 非同步 Shell 腳本執行系統（含 Redis）
+1. **kube-federated-auth-aqsh** ⭐ **(推薦) 合併版**：將所有元件整合在同一個 Deployment 中，一次安裝搞定
+2. **kube-federated-auth**: Kubernetes 聯邦身份驗證伺服器（獨立安裝）
+3. **kube-federated-auth-reader**: 輕量級 ServiceAccount 與 RBAC 設定（供 sub cluster 使用，獨立安裝）
+4. **aqsh**: 非同步 Shell 腳本執行系統（含 Redis，獨立安裝）
+
+### 合併版 vs 獨立版
+
+| | 合併版 (`kube-federated-auth-aqsh`) | 獨立版（三個 chart 分開） |
+|---|---|---|
+| **Deployment 數量** | 1（含兩個 container）+ Redis | 2 + Redis |
+| **安裝指令** | 1 條 helm install | 3 條 helm install |
+| **適合場景** | 簡單部署、小型環境 | 需要獨立擴縮、進階控制 |
+| **reader 整合** | 內建（`reader.enabled=true`）| 需單獨安裝 |
 
 ## 架構說明
 
@@ -220,7 +230,61 @@ authorized_clients:
 2. kubectl 可以存取各個 cluster
 3. 每個 cluster 的 API server 可以透過對應網段存取
 
-### 安裝步驟
+---
+
+### 方式一：使用合併版 chart（推薦）
+
+合併版將 `kube-federated-auth`、`aqsh`、Redis 全部整合在 **一個 Deployment** 中，一條指令即可完成安裝。
+
+#### 1. 在所有 Sub Clusters 安裝（含 reader）
+
+```bash
+# 在 sub-1-1（啟用 reader，無 remote cluster）
+helm install kfa-aqsh charts/kube-federated-auth-aqsh \
+  --namespace kube-system \
+  --create-namespace \
+  --set reader.enabled=true \
+  --set kubeFederatedAuth.clusterName=sub-1-1
+
+# 在 sub-1-2（啟用 reader）
+helm install kfa-aqsh charts/kube-federated-auth-aqsh \
+  --namespace kube-system \
+  --create-namespace \
+  --set reader.enabled=true \
+  --set kubeFederatedAuth.clusterName=sub-1-2
+```
+
+#### 2. 取得各 Sub Cluster 的憑證和 Token
+
+```bash
+# 取得 CA 憑證
+kubectl get configmap kube-root-ca.crt -n kube-system -o jsonpath='{.data.ca\.crt}'
+
+# 取得 ServiceAccount token（Kubernetes 1.24+）
+kubectl create token kube-federated-auth-reader \
+  --namespace kube-system \
+  --duration=168h
+```
+
+#### 3. 在 Central Cluster 安裝（含所有 remote cluster 設定）
+
+```bash
+# 使用 examples/combined-central-values.yaml 作為範本
+# 記得填入實際的 CA cert 和 bootstrap token
+helm install kfa-aqsh charts/kube-federated-auth-aqsh \
+  --namespace kube-system \
+  --create-namespace \
+  --values examples/combined-central-values.yaml
+```
+
+安裝後每個 cluster 會有：
+- 1 個 Deployment（含 `kube-federated-auth` + `aqsh` 兩個 container）
+- 1 個 Redis Deployment（獨立）
+- 對應的 Services、ConfigMaps、RBAC
+
+---
+
+### 方式二：使用獨立版 charts（進階）
 
 #### 1. 在所有 Sub Clusters 安裝 Reader
 
