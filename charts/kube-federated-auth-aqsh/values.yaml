@@ -82,17 +82,27 @@ kubeFederatedAuth:
 
   # Local cluster configuration (always present)
   localCluster:
+    # issuer must match the 'iss' claim in local SA tokens.
+    # For kubeadm clusters this is typically "https://kubernetes.default.svc.cluster.local".
+    # Verify with: kubectl create token default --duration=1m | cut -d. -f2 | base64 -d | jq .iss
     issuer: "https://kubernetes.default.svc.cluster.local"
     caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
   # Remote clusters configuration
   # Each entry should have: name, issuer, apiServer, caCert, bootstrapToken
+  #
+  # issuer    — must match the 'iss' claim in that cluster's SA tokens (used for
+  #             JWT matching and JWKS lookup). For kubeadm clusters this is usually
+  #             "https://kubernetes.default.svc.cluster.local" — NOT the external URL.
+  #             Verify: kubectl create token default --duration=1m | cut -d. -f2 | base64 -d | jq .iss
+  # apiServer  — actual network-accessible API server URL (used for TokenReview and
+  #             JWKS fetch when issuer is not publicly reachable)
   remoteClusters: []
   # Example:
   # - name: sub-1-1
-  #   issuer: "https://sub-1-1.example.com:6443"
-  #   apiServer: "https://10.1.1.1:6443"
+  #   issuer: "https://kubernetes.default.svc.cluster.local"  # JWT iss claim (kubeadm default)
+  #   apiServer: "https://10.1.1.1:6443"                      # actual network address
   #   caCert: |
   #     -----BEGIN CERTIFICATE-----
   #     ...

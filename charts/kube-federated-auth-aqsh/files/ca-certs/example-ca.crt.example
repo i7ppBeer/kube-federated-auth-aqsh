@@ -1,0 +1,12 @@
+# Place CA certificates for remote clusters in this directory.
+# File naming convention: <cluster-name>-ca.crt
+#
+# Example:
+#   files/ca-certs/sub-1-1-ca.crt
+#   files/ca-certs/sub-1-2-ca.crt
+#
+# Obtain the CA cert from each cluster:
+#   kubectl get configmap kube-root-ca.crt -n kube-system -o jsonpath='{.data.ca\.crt}'
+#
+# These files are bundled into a ConfigMap and mounted at:
+#   /etc/kube-federated-auth/ca-certs/<cluster-name>-ca.crt
