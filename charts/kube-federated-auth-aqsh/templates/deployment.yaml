@@ -6,6 +6,10 @@ metadata:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     release: {{ .Release.Name }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -17,8 +21,24 @@ spec:
       labels:
         app: kube-federated-auth-aqsh
         release: {{ .Release.Name }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: kube-federated-auth
         image: "{{ .Values.kubeFederatedAuth.image.repository }}:{{ .Values.kubeFederatedAuth.image.tag }}"
@@ -70,11 +90,29 @@ spec:
         - name: aqsh-config
           mountPath: /etc/aqsh
           readOnly: true
-        {{- if .Values.aqsh.scripts }}
+        {{- if .Files.Glob "files/scripts/*" }}
         - name: aqsh-scripts
           mountPath: /scripts
           readOnly: true
         {{- end }}
+      {{- if .Values.kubeAuthProxy.enabled }}
+      - name: kube-auth-proxy
+        image: "{{ .Values.kubeAuthProxy.image.repository }}:{{ .Values.kubeAuthProxy.image.tag }}"
+        imagePullPolicy: {{ .Values.kubeAuthProxy.image.pullPolicy }}
+        args:
+          - --upstream=http://localhost:{{ .Values.aqsh.service.port }}
+          - --token-review-url=http://localhost:{{ .Values.kubeFederatedAuth.service.port }}
+          - --port={{ .Values.kubeAuthProxy.port }}
+        ports:
+          - containerPort: {{ .Values.kubeAuthProxy.port }}
+            name: http-proxy
+            protocol: TCP
+        resources:
+          {{- toYaml .Values.kubeAuthProxy.resources | nindent 10 }}
+      {{- end }}
+      {{- with .Values.sidecars }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       volumes:
       - name: kfa-config
         configMap:
@@ -82,7 +120,7 @@ spec:
       - name: aqsh-config
         configMap:
           name: {{ .Release.Name }}-aqsh-config
-      {{- if .Values.aqsh.scripts }}
+      {{- if .Files.Glob "files/scripts/*" }}
       - name: aqsh-scripts
         configMap:
           name: {{ .Release.Name }}-aqsh-scripts

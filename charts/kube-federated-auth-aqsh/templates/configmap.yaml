@@ -46,9 +46,10 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   tasks.yaml: |
-{{ .Values.aqsh.tasksConfig | indent 4 }}
+{{ .Files.Get "files/tasks.yaml" | indent 4 }}
 ---
-{{- if .Values.aqsh.scripts }}
+{{- $scriptFiles := .Files.Glob "files/scripts/*" }}
+{{- if $scriptFiles }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -57,8 +58,8 @@ metadata:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
-{{- range $name, $content := .Values.aqsh.scripts }}
-  {{ $name }}: |
-{{ $content | indent 4 }}
+{{- range $path, $content := $scriptFiles }}
+  {{ base $path }}: |
+{{ $content | toString | indent 4 }}
 {{- end }}
 {{- end }}

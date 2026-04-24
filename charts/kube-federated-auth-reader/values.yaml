@@ -1,5 +1,0 @@
-# Service account name for the reader
-serviceAccountName: kube-federated-auth-reader
-
-# Namespace to create the service account in
-namespace: kube-system

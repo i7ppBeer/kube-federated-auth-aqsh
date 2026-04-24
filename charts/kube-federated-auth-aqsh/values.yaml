@@ -4,6 +4,40 @@
 
 replicaCount: 1
 
+# ── Scheduling ────────────────────────────────────────────────────────────────
+nodeSelector: {}
+#  kubernetes.io/arch: amd64
+
+affinity: {}
+#  nodeAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution:
+#      nodeSelectorTerms:
+#        - matchExpressions:
+#            - key: node-role.kubernetes.io/worker
+#              operator: Exists
+
+tolerations: []
+#  - key: "node-role.kubernetes.io/control-plane"
+#    operator: "Exists"
+#    effect: "NoSchedule"
+
+# ── Annotations ───────────────────────────────────────────────────────────────
+# Annotations added to the Deployment metadata
+annotations: {}
+
+# Annotations added to the Pod template metadata
+podAnnotations: {}
+#  prometheus.io/scrape: "true"
+#  prometheus.io/port: "8080"
+
+# ── Sidecars ──────────────────────────────────────────────────────────────────
+# Additional containers injected into the main Deployment pod
+sidecars: []
+#  - name: my-sidecar
+#    image: nginx:alpine
+#    ports:
+#      - containerPort: 80
+
 # ── kube-federated-auth ──────────────────────────────────────────────────────
 kubeFederatedAuth:
   image:
@@ -84,21 +118,10 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Tasks configuration
-  tasksConfig: |
-    tasks:
-      - name: example-task
-        script: /scripts/example.sh
-        description: "Example task"
-        allowed_groups:
-          - "system:authenticated"
-
-  # Scripts to mount
-  scripts: {}
-  #  example.sh: |
-  #    #!/bin/bash
-  #    echo "Hello from aqsh"
-  #    echo "Submitted by: $AQSH_SUBMITTER"
+  # Tasks and scripts are loaded from the chart's files/ directory:
+  #   files/tasks.yaml        — task definitions (mounted at /etc/aqsh/tasks.yaml)
+  #   files/scripts/<name>    — shell scripts    (mounted at /scripts/<name>, mode 0755)
+  # Edit those files directly rather than setting values here.
 
   resources:
     limits:
@@ -107,6 +130,29 @@ aqsh:
     requests:
       cpu: 100m
       memory: 128Mi
+
+# ── kube-auth-proxy (sidecar) ────────────────────────────────────────────────
+# Reverse proxy sidecar that validates Bearer tokens via kube-federated-auth
+# and injects X-Forwarded-User/Groups/Extra-Cluster-Name headers to aqsh.
+# When enabled, external traffic should target :4180 (proxy), not :8080 (aqsh).
+kubeAuthProxy:
+  enabled: false
+
+  image:
+    repository: ghcr.io/rophy/kube-auth-proxy
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Port the proxy listens on (external-facing)
+  port: 4180
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 20m
+      memory: 32Mi
 
 # ── Redis ─────────────────────────────────────────────────────────────────────
 redis:
@@ -134,6 +180,29 @@ redis:
       cpu: 50m
       memory: 64Mi
 
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  annotations: {}
+  podAnnotations: {}
+
+# ── ricoberger/vault-secrets-operator ────────────────────────────────────────
+# Requires ricoberger/vault-secrets-operator installed in the cluster.
+# Creates VaultSecret CRs (apiVersion: ricoberger.de/v1alpha1) which the
+# operator reconciles into Kubernetes Secrets.
+#
+# Typical use: store remote cluster CA certs / bootstrap tokens in Vault
+# under paths matching "<release>-kfa-certs" / "<release>-kfa-tokens" so the
+# Deployment can consume them without embedding secrets in values.yaml.
+vaultSecrets:
+  enabled: false
+
+  # List of VaultSecret resources to create
+  secrets: []
+  # - name: kfa-tokens               # VaultSecret CR name (= K8s Secret name)
+  #   path: kvv2/kube-federated-auth/tokens  # full Vault path (mount included)
+  #   type: Opaque                    # K8s Secret type (default: Opaque)
+
 # ── Reader (optional — deploy on sub clusters) ────────────────────────────────
 # Installs a lightweight ServiceAccount + RBAC for token review
 reader:
@@ -146,3 +215,26 @@ serviceAccount:
   create: true
   name: kube-federated-auth-aqsh
   annotations: {}
+
+# ── Istio VirtualService ──────────────────────────────────────────────────────
+istio:
+  virtualService:
+    enabled: false
+    # Hostnames this VirtualService applies to
+    hosts: []
+    #  - kube-federated-auth.example.com
+    # Istio Gateways to attach to
+    gateways: []
+    #  - istio-system/ingressgateway
+    # TLS routes for kube-federated-auth (:8443)
+    # Uses Istio tls match (SNI-based) — service port is named 'https'
+    tls: []
+    #  - match:
+    #      - port: 443
+    #        sniHosts:
+    #          - kube-federated-auth.example.com
+    #    route:
+    #      - destination:
+    #          host: <release>-kube-federated-auth
+    #          port:
+    #            number: 8443

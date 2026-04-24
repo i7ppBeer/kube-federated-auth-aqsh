@@ -98,44 +98,9 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  tasksConfig: |
-    tasks:
-      - name: hello
-        script: /scripts/hello.sh
-        description: "Simple hello task"
-        allowed_groups:
-          - "system:authenticated"
-
-      - name: deploy
-        script: /scripts/deploy.sh
-        description: "Deployment task"
-        allowed_groups:
-          - "system:masters"
-          - "deployers"
-        inputs:
-          - name: environment
-            type: string
-            required: true
-            validation: "^(dev|staging|prod)$"
-          - name: version
-            type: string
-            required: true
-
-  scripts:
-    hello.sh: |
-      #!/bin/bash
-      echo "Hello from aqsh!"
-      echo "Task submitted by: $AQSH_SUBMITTER"
-      echo "Task ID: $AQSH_TASK_ID"
-      date
-
-    deploy.sh: |
-      #!/bin/bash
-      echo "Deploying to environment: $INPUT_ENVIRONMENT"
-      echo "Version: $INPUT_VERSION"
-      echo "Submitted by: $AQSH_SUBMITTER"
-      kubectl get pods -n $INPUT_ENVIRONMENT || true
-      echo "Deployment completed!"
+  # Tasks and scripts are loaded from the chart's files/ directory.
+  # Edit charts/kube-federated-auth-aqsh/files/tasks.yaml and
+  # charts/kube-federated-auth-aqsh/files/scripts/ to customise.
 
   resources:
     limits:

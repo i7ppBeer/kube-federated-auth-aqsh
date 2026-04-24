@@ -28,10 +28,17 @@ metadata:
 spec:
   type: {{ .Values.aqsh.service.type }}
   ports:
+  {{- if .Values.kubeAuthProxy.enabled }}
+  - port: {{ .Values.kubeAuthProxy.port }}
+    targetPort: {{ .Values.kubeAuthProxy.port }}
+    protocol: TCP
+    name: http-proxy
+  {{- else }}
   - port: {{ .Values.aqsh.service.port }}
     targetPort: 8080
     protocol: TCP
     name: http
+  {{- end }}
   selector:
     app: kube-federated-auth-aqsh
     release: {{ .Release.Name }}

@@ -1,0 +1,46 @@
+# Sub cluster example — kube-federated-auth-aqsh combined chart
+# Suitable for sub-1-1: same-group with sub-1-2 via 100.x, isolated from sub-2-x
+
+replicaCount: 1
+
+kubeFederatedAuth:
+  clusterRole: sub-same-group
+  clusterName: sub-1-1
+
+  # Accept calls from self and same-group peer
+  authorizedClients:
+    - "sub-1-1/*/*"
+    - "sub-1-2/*/*"
+
+  localCluster:
+    issuer: "https://kubernetes.default.svc.cluster.local"
+    caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+  # Only knows the same-group peer via 100.x network
+  remoteClusters:
+    - name: sub-1-2
+      issuer: "https://sub-1-2.example.com:6443"
+      apiServer: "https://100.1.1.2:6443"
+      caCert: |
+        -----BEGIN CERTIFICATE-----
+        # Replace with actual CA certificate for sub-1-2
+        -----END CERTIFICATE-----
+      bootstrapToken: "eyJhbGci..."  # Replace with actual bootstrap token
+
+aqsh:
+  mode: both
+  identityHeader: "X-Forwarded-User"
+  groupsHeader: "X-Forwarded-Groups"
+  requireIdentity: true
+
+redis:
+  enabled: true
+  persistence:
+    enabled: false
+
+# Enable reader so the central cluster can call this sub cluster's TokenReview
+reader:
+  enabled: true
+  serviceAccountName: kube-federated-auth-reader
+  namespace: kube-system
