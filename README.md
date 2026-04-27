@@ -724,15 +724,46 @@ EOF
 需叢集中已安裝 [ricoberger/vault-secrets-operator](https://github.com/ricoberger/vault-secrets-operator)。  
 啟用後 chart 建立 `VaultSecret` CR（`apiVersion: ricoberger.de/v1alpha1`），operator 將 Vault path 的資料同步為同名的 K8s Secret。
 
-典型用途：將 `remoteClusters[].bootstrapToken` 存入 Vault，避免明文出現在 values.yaml 中。
+典型用途：透過 vaultSecrets 提供遠端叢集的 bootstrap token，完全避免明文出現在 values.yaml / git 中。
+
+#### 推薦做法：caCert 與 bootstrapToken 都不進 git
+
+| 欄位 | 建議做法 |
+|---|---|
+| `caCert` | 留空，將憑證放到 `files/ca-certs/<name>-ca.crt`，chart 自動 mount 為 ConfigMap |
+| `bootstrapToken` | 留空，透過 vaultSecrets 提供，Secret 名稱必須是 `<release>-kfa-tokens`，key 為 `<name>-token` |
+
+values.yaml 範例（無敏感資訊，可進 git）：
 
 ```yaml
+kubeFederatedAuth:
+  remoteClusters:
+    - name: sub-1-1
+      issuer: "https://kubernetes.default.svc.cluster.local"
+      apiServer: "https://10.1.1.1:6443"
+      caCert: ""          # 留空：憑證放 files/ca-certs/sub-1-1-ca.crt
+      bootstrapToken: ""  # 留空：由 vaultSecrets 提供
+
 vaultSecrets:
   enabled: true
   secrets:
-    - name: kfa-tokens       # CR 名稱 = 最終 K8s Secret 名稱
+    - name: my-release-kfa-tokens   # 必須等於 <release名稱>-kfa-tokens
       path: kvv2/kube-federated-auth/tokens
       type: Opaque
+```
+
+Vault KV 內容（key 名稱必須為 `<cluster-name>-token`）：
+
+```
+kvv2/kube-federated-auth/tokens
+  sub-1-1-token = eyJhbGci...
+```
+
+CA 憑證放置位置：
+
+```
+charts/kube-federated-auth-aqsh/files/ca-certs/
+  sub-1-1-ca.crt
 ```
 
 ---

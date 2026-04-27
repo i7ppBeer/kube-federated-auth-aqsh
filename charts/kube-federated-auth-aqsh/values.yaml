@@ -104,11 +104,16 @@ kubeFederatedAuth:
   # - name: sub-1-1
   #   issuer: "https://kubernetes.default.svc.cluster.local"  # JWT iss claim (kubeadm default)
   #   apiServer: "https://10.1.1.1:6443"                      # actual network address
-  #   caCert: |
-  #     -----BEGIN CERTIFICATE-----
-  #     ...
-  #     -----END CERTIFICATE-----
-  #   bootstrapToken: "eyJhbGc..."
+  #
+  #   # caCert (optional): inline PEM. If omitted, place the cert at
+  #   #   files/ca-certs/<name>-ca.crt and it will be mounted via ConfigMap.
+  #   caCert: ""
+  #
+  #   # bootstrapToken (optional): inline SA token for first-time auth to the
+  #   #   remote cluster. If omitted, provide Secret <release>-kfa-tokens
+  #   #   externally (e.g. vaultSecrets) with key <name>-token before deploying.
+  #   #   Never commit a real token to git.
+  #   bootstrapToken: ""
 
 # ── aqsh ─────────────────────────────────────────────────────────────────────
 aqsh:
