@@ -16,8 +16,8 @@ spec:
   gateways:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.istio.virtualService.tls }}
-  tls:
+  {{- with .Values.istio.virtualService.http }}
+  http:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}

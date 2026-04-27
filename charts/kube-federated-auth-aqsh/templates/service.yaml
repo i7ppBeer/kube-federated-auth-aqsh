@@ -12,7 +12,7 @@ spec:
   - port: {{ .Values.kubeFederatedAuth.service.port }}
     targetPort: 8443
     protocol: TCP
-    name: https
+    name: http
   selector:
     app: kube-federated-auth-aqsh
     release: {{ .Release.Name }}

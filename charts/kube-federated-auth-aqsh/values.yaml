@@ -57,8 +57,9 @@ kubeFederatedAuth:
       cpu: 100m
       memory: 128Mi
 
-  # Cluster role: central, sub-same-group, or sub-isolated
-  clusterRole: central
+  # NOTE: clusterRole is not a recognized field in kube-federated-auth's config
+  # format and has no effect on the binary. Kept here as documentation only.
+  # clusterRole: central
 
   # Cluster name for this deployment
   clusterName: central
@@ -179,7 +180,7 @@ redis:
 
   persistence:
     enabled: false
-    # size: 1Gi
+    size: 1Gi
     # storageClass: ""
 
   resources:
@@ -236,13 +237,12 @@ istio:
     # Istio Gateways to attach to
     gateways: []
     #  - istio-system/ingressgateway
-    # TLS routes for kube-federated-auth (:8443)
-    # Uses Istio tls match (SNI-based) — service port is named 'https'
-    tls: []
+    # HTTP routes for kube-federated-auth (:8443)
+    # kube-federated-auth serves plain HTTP (not TLS); use http routes, not tls.
+    http: []
     #  - match:
-    #      - port: 443
-    #        sniHosts:
-    #          - kube-federated-auth.example.com
+    #      - uri:
+    #          prefix: /
     #    route:
     #      - destination:
     #          host: <release>-kube-federated-auth

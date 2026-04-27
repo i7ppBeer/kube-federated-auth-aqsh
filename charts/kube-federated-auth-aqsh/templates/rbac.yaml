@@ -28,3 +28,36 @@ subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount.name }}
   namespace: {{ .Release.Namespace }}
+---
+# Role for persisting renewed remote-cluster tokens to a namespaced Secret.
+# kube-federated-auth reads and writes this Secret during credential renewal
+# (internal/credentials/store.go: loadFromSecret / saveToSecret).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-kube-federated-auth
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}

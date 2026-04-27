@@ -46,9 +46,10 @@ spec:
         args:
         - --config=/etc/kube-federated-auth/clusters.yaml
         - --port=8443
+        - --secret-name={{ .Release.Name }}-kfa-credentials
         ports:
         - containerPort: 8443
-          name: https
+          name: http
           protocol: TCP
         resources:
           {{- toYaml .Values.kubeFederatedAuth.resources | nindent 10 }}
