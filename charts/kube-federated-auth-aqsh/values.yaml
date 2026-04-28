@@ -41,7 +41,6 @@ sidecars: []
 # ── kube-federated-auth ──────────────────────────────────────────────────────
 kubeFederatedAuth:
   enabled: true
-  standalone: false   # when true, deploy kube-federated-auth as its own Deployment (separate from aqsh)
 
   image:
     repository: rophy/kube-federated-auth
@@ -284,20 +283,3 @@ istio:
 #   enabled: true
 #   tokenReviewUrl: "http://my-existing-kube-federated-auth:8443"
 #   port: 4180
-
-# Example: standalone kubeFederatedAuth + aqsh + kube-auth-proxy (fully split)
-#
-# kubeFederatedAuth:
-#   enabled: true
-#   standalone: true        # deploy as separate Deployment
-#
-# aqsh:
-#   enabled: true
-#
-# kubeAuthProxy:
-#   enabled: true
-#   port: 4180
-#   # tokenReviewUrl auto-resolves to http://<release>-kube-federated-auth:8443
-#
-# redis:
-#   enabled: true
