@@ -1,3 +1,4 @@
+{{- if .Values.kubeFederatedAuth.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,6 +37,7 @@ data:
         token_path: "/etc/kube-federated-auth/tokens/{{ .name }}-token"
     {{- end }}
 ---
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -67,6 +69,7 @@ data:
 {{- end }}
 {{- end }}
 ---
+{{- if .Values.kubeFederatedAuth.enabled }}
 {{- $caCertFiles := .Files.Glob "files/ca-certs/*.crt" }}
 {{- if $caCertFiles }}
 apiVersion: v1
@@ -80,5 +83,6 @@ data:
 {{- range $path, $content := $caCertFiles }}
   {{ base $path }}: |
 {{ $content | toString | indent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}
