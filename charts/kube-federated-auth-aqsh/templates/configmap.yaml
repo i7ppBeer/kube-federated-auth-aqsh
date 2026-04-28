@@ -17,11 +17,14 @@ metadata:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
+  {{- $tasks := .Files.Get "files/tasks.yaml" }}
+  {{- if .Values.aqsh.tasks }}{{ $tasks = .Values.aqsh.tasks }}{{ end }}
   tasks.yaml: |
-{{ .Files.Get "files/tasks.yaml" | indent 4 }}
+{{ $tasks | indent 4 }}
 ---
-{{- $scriptFiles := .Files.Glob "files/scripts/*" }}
-{{- if $scriptFiles }}
+{{- $hasValueScripts := .Values.aqsh.scripts }}
+{{- $hasFileScripts := .Files.Glob "files/scripts/*" }}
+{{- if or $hasValueScripts $hasFileScripts }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -30,10 +33,17 @@ metadata:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
-{{- range $path, $content := $scriptFiles }}
+  {{- if $hasValueScripts }}
+  {{- range $name, $content := .Values.aqsh.scripts }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+  {{- end }}
+  {{- else }}
+  {{- range $path, $content := $hasFileScripts }}
   {{ base $path }}: |
 {{ $content | toString | indent 4 }}
-{{- end }}
+  {{- end }}
+  {{- end }}
 {{- end }}
 ---
 {{- $caCertFiles := .Files.Glob "files/ca-certs/*.crt" }}

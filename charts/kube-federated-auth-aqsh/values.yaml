@@ -152,10 +152,32 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Tasks and scripts are loaded from the chart's files/ directory:
+  # Tasks and scripts can be provided in two ways (values take precedence over files/):
+  #
+  # Option A — inline in values.yaml (works with remote/subchart usage):
+  #   tasks: |
+  #     tasks:
+  #       - name: deploy
+  #         script: /scripts/deploy.sh
+  #         ...
+  #   scripts:
+  #     deploy.sh: |
+  #       #!/bin/bash
+  #       echo "hello"
+  #
+  # Option B — edit files/ directly (local chart only):
   #   files/tasks.yaml        — task definitions (mounted at /etc/aqsh/tasks.yaml)
   #   files/scripts/<name>    — shell scripts    (mounted at /scripts/<name>, mode 0755)
-  # Edit those files directly rather than setting values here.
+
+  # Inline tasks definition (multiline string, overrides files/tasks.yaml when set)
+  tasks: ""
+
+  # Inline scripts (map of filename -> content, overrides files/scripts/* when set)
+  scripts: {}
+  #  deploy.sh: |
+  #    #!/bin/bash
+  #    set -euo pipefail
+  #    echo "Deploying $VERSION to $ENVIRONMENT (submitter: $AQSH_SUBMITTER)"
 
   resources:
     limits:

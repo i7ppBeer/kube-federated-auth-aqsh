@@ -179,7 +179,7 @@ spec:
         - name: aqsh-config
           mountPath: /etc/aqsh
           readOnly: true
-        {{- if .Files.Glob "files/scripts/*" }}
+        {{- if or .Values.aqsh.scripts (.Files.Glob "files/scripts/*") }}
         - name: aqsh-scripts
           mountPath: /scripts
           readOnly: true
@@ -207,7 +207,7 @@ spec:
       - name: aqsh-config
         configMap:
           name: {{ .Release.Name }}-aqsh-config
-      {{- if .Files.Glob "files/scripts/*" }}
+      {{- if or .Values.aqsh.scripts (.Files.Glob "files/scripts/*") }}
       - name: aqsh-scripts
         configMap:
           name: {{ .Release.Name }}-aqsh-scripts
