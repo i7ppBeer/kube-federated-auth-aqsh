@@ -152,10 +152,30 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Tasks and scripts are loaded from the chart's files/ directory:
-  #   files/tasks.yaml        — task definitions (mounted at /etc/aqsh/tasks.yaml)
-  #   files/scripts/<name>    — shell scripts    (mounted at /scripts/<name>, mode 0755)
-  # Edit those files directly rather than setting values here.
+  # Task definitions (mounted at /etc/aqsh/tasks.yaml)
+  tasks: []
+  # - name: deploy
+  #   script: /scripts/deploy.sh
+  #   description: "Deploy application"
+  #   timeout: 10m
+  #   max_retry: 2
+  #   queue: default
+  #   allowed_groups:
+  #     - deploy-team
+  #     - system:serviceaccounts:ops
+  #   input:
+  #     - name: version
+  #       env: VERSION
+  #       required: true
+  #       type: string
+  #       pattern: '^v?\d+\.\d+\.\d+$'
+
+  # Shell scripts mounted at /scripts/<name> (mode 0755)
+  scripts: {}
+  # deploy.sh: |
+  #   #!/bin/bash
+  #   set -euo pipefail
+  #   echo "Deploying $VERSION to $ENVIRONMENT (submitter: $AQSH_SUBMITTER)"
 
   resources:
     limits:

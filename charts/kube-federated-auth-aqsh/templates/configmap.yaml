@@ -7,7 +7,34 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   clusters.yaml: |
-{{ tpl (.Files.Get "files/clusters.yaml") . | indent 4 }}
+    authorized_clients:
+    {{- range .Values.kubeFederatedAuth.authorizedClients }}
+      - {{ . | quote }}
+    {{- end }}
+
+    cache:
+      ttl: {{ .Values.kubeFederatedAuth.cache.ttl }}
+      max_entries: {{ .Values.kubeFederatedAuth.cache.maxEntries }}
+
+    renewal:
+      interval: {{ .Values.kubeFederatedAuth.renewal.interval | quote }}
+      token_duration: {{ .Values.kubeFederatedAuth.renewal.tokenDuration | quote }}
+      renew_before: {{ .Values.kubeFederatedAuth.renewal.renewBefore | quote }}
+
+    clusters:
+      # Local cluster (self)
+      {{ .Values.kubeFederatedAuth.clusterName }}:
+        issuer: {{ .Values.kubeFederatedAuth.localCluster.issuer | quote }}
+        ca_cert: {{ .Values.kubeFederatedAuth.localCluster.caCertPath | quote }}
+        token_path: {{ .Values.kubeFederatedAuth.localCluster.tokenPath | quote }}
+    {{- range .Values.kubeFederatedAuth.remoteClusters }}
+      # Remote cluster: {{ .name }}
+      {{ .name }}:
+        issuer: {{ .issuer | quote }}
+        api_server: {{ .apiServer | quote }}
+        ca_cert: "/etc/kube-federated-auth/ca-certs/{{ .name }}-ca.crt"
+        token_path: "/etc/kube-federated-auth/tokens/{{ .name }}-token"
+    {{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -18,10 +45,14 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   tasks.yaml: |
-{{ .Files.Get "files/tasks.yaml" | indent 4 }}
+    tasks:
+    {{- if .Values.aqsh.tasks }}
+    {{- toYaml .Values.aqsh.tasks | nindent 4 }}
+    {{- else }}
+      []
+    {{- end }}
 ---
-{{- $scriptFiles := .Files.Glob "files/scripts/*" }}
-{{- if $scriptFiles }}
+{{- if .Values.aqsh.scripts }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -30,9 +61,9 @@ metadata:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
-{{- range $path, $content := $scriptFiles }}
-  {{ base $path }}: |
-{{ $content | toString | indent 4 }}
+{{- range $name, $content := .Values.aqsh.scripts }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
 {{- end }}
 {{- end }}
 ---

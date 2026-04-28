@@ -1,6 +1,0 @@
-tasks:
-  - name: example-task
-    script: /scripts/example.sh
-    description: "Example task"
-    allowed_groups:
-      - "system:authenticated"

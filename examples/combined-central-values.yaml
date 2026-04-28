@@ -109,9 +109,25 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Tasks and scripts are loaded from the chart's files/ directory.
-  # Edit charts/kube-federated-auth-aqsh/files/tasks.yaml and
-  # charts/kube-federated-auth-aqsh/files/scripts/ to customise.
+  # Task definitions
+  tasks:
+    - name: deploy
+      script: /scripts/deploy.sh
+      description: "Deploy application"
+      allowed_groups:
+        - deploy-team
+      input:
+        - name: version
+          env: VERSION
+          required: true
+          type: string
+
+  # Shell scripts (mounted at /scripts/<name>, mode 0755)
+  scripts:
+    deploy.sh: |
+      #!/bin/bash
+      set -euo pipefail
+      echo "Deploying $VERSION (submitter: $AQSH_SUBMITTER)"
 
   resources:
     limits:
