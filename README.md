@@ -14,6 +14,7 @@
   - [authorizedClients](#authorizedclients)
   - [allowed\_groups](#allowed_groups)
   - [比較與關係](#比較與關係)
+- [RBAC 需求](#rbac-需求)
 - [E2E 完整請求流程](#e2e-完整請求流程)
 - [網路架構](#網路架構)
 - [安裝指南](#安裝指南)
@@ -25,17 +26,17 @@
 
 ## 元件概述
 
-本 chart（`charts/kube-federated-auth-aqsh`）將以下元件打包成**單一 Deployment**：
+本 chart（`charts/kube-federated-auth-aqsh`）將以下元件拆分為**獨立 Deployment**：
 
-| 元件 | 角色 | Port |
-|---|---|---|
-| **kube-federated-auth** | 跨叢集 SA token 驗證後端（TokenReview API）| 8443 |
-| **kube-auth-proxy** | Bearer token → X-Forwarded-* header 轉換的 reverse proxy sidecar | 4180（可選）|
-| **aqsh** | 非同步 shell script 任務佇列（HTTP API + Worker）| 8080 |
-| **Redis** | aqsh 的 task queue 與 log stream 儲存（獨立 Deployment）| 6379 |
+| Deployment | 元件 | 角色 | Port |
+|---|---|---|---|
+| `<release>-kube-federated-auth` | **kube-federated-auth** | 跨叢集 SA token 驗證後端（TokenReview API）| 8443 |
+| `<release>-aqsh` | **aqsh** + **kube-auth-proxy**（可選 sidecar）| 非同步 shell script 任務佇列 | 8080 / 4180 |
+| `<release>-redis` | **Redis** | aqsh 的 task queue 與 log stream 儲存 | 6379 |
 
-> **kube-auth-proxy 為可選 sidecar**（預設 `kubeAuthProxy.enabled=false`）。  
-> 啟用後外部流量應打 `:4180`，proxy 負責驗證 token、注入 header，再轉發至 aqsh `:8080`。
+> **kube-auth-proxy 為可選 sidecar**（預設 `kubeAuthProxy.enabled=false`），注入 aqsh Deployment。  
+> 啟用後 kube-auth-proxy 向 `<release>-kube-federated-auth` Service 發起 TokenReview 請求。  
+> 外部流量應打 aqsh Service 的 `:4180`（proxy）而非 `:8080`（直連 aqsh）。
 
 ---
 
@@ -48,16 +49,17 @@
                    │                  central cluster                  │
                    │                                                    │
                    │  ┌──────────────────────────────────────────────┐ │
-                   │  │                    Pod                        │ │
-                   │  │  ┌──────────────┐   ┌────────────────────┐   │ │
-                   │  │  │kube-auth-    │──►│ kube-federated-auth│   │ │
-                   │  │  │proxy :4180   │   │ localhost:8443      │   │ │
-                   │  │  └──────┬───────┘   └────────────────────┘   │ │
-                   │  │         │ X-Forwarded-*                       │ │
-                   │  │         ▼                                     │ │
-                   │  │  ┌──────────────┐                             │ │
-                   │  │  │ aqsh :8080   │                             │ │
-                   │  │  └──────────────┘                             │ │
+                   │  │ Deployment: kube-federated-auth               │ │
+                   │  │  ┌──────────────────────────────────────────┐ │ │
+                   │  │  │ kube-federated-auth :8443                │ │ │
+                   │  │  └──────────────────────────────────────────┘ │ │
+                   │  └──────────────────────────────────────────────┘ │
+                   │  ┌──────────────────────────────────────────────┐ │
+                   │  │ Deployment: aqsh                              │ │
+                   │  │  ┌──────────────┐  ┌──────────────────────┐  │ │
+                   │  │  │kube-auth-    │  │ aqsh :8080           │  │ │
+                   │  │  │proxy :4180   │  └──────────────────────┘  │ │
+                   │  │  └──────────────┘                            │ │
                    │  └──────────────────────────────────────────────┘ │
                    │  ┌──────────┐                                     │
                    │  │  Redis   │  (獨立 Deployment)                  │
@@ -68,21 +70,17 @@
          │                            │                            │
 ┌────────▼────────────────┐           │           ┌───────────────▼─────────┐
 │       sub-1-1           │           │           │       sub-2-1           │
-│  Pod:                   │◄─100.x───►│           │  Pod:                   │
-│   kube-auth-proxy :4180 │           │           │   kube-auth-proxy :4180 │
-│   kube-federated-auth   │           │           │   kube-federated-auth   │
-│   aqsh                  │           │           │   aqsh                  │
-│  Redis (獨立)           │           │           │  Redis (獨立)           │
+│ (same deployments)      │◄─100.x───►│           │ (same deployments)      │
 └─────────────────────────┘           │           └─────────────────────────┘
 ┌─────────────────────────┐           │           ┌─────────────────────────┐
 │       sub-1-2           │           │           │       sub-2-2           │
-│  Pod: (同上)            │           │           │  Pod: (同上)            │
+│ (same deployments)      │◄─100.x───►│           │ (same deployments)      │
 └─────────────────────────┘           │           └─────────────────────────┘
       (100.x 互通)                                      (100.x 互通)
       sub-1-x ✗ sub-2-x                                sub-1-x ✗ sub-2-x
 ```
 
-### Pod 內部架構
+### 叢集內部部署架構
 
 ```
 外部流量
@@ -90,30 +88,35 @@
   │  POST /tasks/deploy
   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                           Pod                                    │
+│ Deployment: aqsh                                                 │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │  kube-auth-proxy (:4180)                                 │   │
+│  │  kube-auth-proxy (:4180)  [sidecar]                      │   │
 │  │                                                          │   │
 │  │  1. 截取 Authorization Bearer token                      │   │
-│  │  2. POST localhost:8443/tokenreviews (帶自身 SA token)   │   │
+│  │  2. POST <release>-kube-federated-auth:8443/tokenreviews │   │
 │  │  3. 移除 Authorization header                            │   │
 │  │  4. 注入 X-Forwarded-User/Groups/Extra-Cluster-Name      │   │
 │  └──────────────────────────┬───────────────────────────────┘   │
 │                             │ http://localhost:8080              │
-│             ┌───────────────▼────────────┐  ┌────────────────┐  │
-│             │  aqsh (:8080)              │  │ kube-federated │  │
-│             │  - allowed_groups 檢查      │  │ -auth (:8443)  │  │
-│             │  - 推入 Redis queue         │  │ - authorizedCl │  │
-│             │  - Worker 執行 script       │  │   ients 白名單 │  │
-│             │  - SSE log streaming        │  │ - JWKS 驗簽    │  │
-│             └──────────────┬─────────────┘  │ - TokenReview  │  │
-│                            │                │   轉發         │  │
-│                            ▼                └────────────────┘  │
-│             ┌──────────────────────────┐                        │
-│             │  Redis (獨立 Deployment)  │                        │
-│             │  Asynq queue + Log stream │                        │
-│             └──────────────────────────┘                        │
+│             ┌───────────────▼────────────┐                      │
+│             │  aqsh (:8080)              │                      │
+│             │  - allowed_groups 檢查      │                      │
+│             │  - 推入 Redis queue         │                      │
+│             │  - Worker 執行 script       │                      │
+│             │  - SSE log streaming        │                      │
+│             └────────────────────────────┘                      │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ Deployment: kube-federated-auth                                  │
+│  - authorizedClients 白名單                                       │
+│  - JWKS 驗簽 + TokenReview 轉發至原始 cluster                     │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ Deployment: redis（獨立）                                         │
+│  Asynq queue + Log stream                                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -125,6 +128,92 @@
 | sub-1-1 ↔ sub-1-2 | 100.x | 同組 sub cluster 可以互相驗證 |
 | sub-2-1 ↔ sub-2-2 | 100.x | 同組 sub cluster 可以互相驗證 |
 | sub-1-x ✗ sub-2-x | — | 不同組完全隔離（純設定層，不需 NetworkPolicy）|
+
+---
+
+## RBAC 需求
+
+Chart 部署時自動建立以下 RBAC 資源，**需要叢集管理員（cluster-admin）權限才能 helm install**：
+
+### kube-federated-auth 本體（`rbac.yaml`）
+
+| 資源 | 類型 | 說明 |
+|---|---|---|
+| `ClusterRole` | `authentication.k8s.io/tokenreviews:create`、`serviceaccounts/token:create` | kube-federated-auth 呼叫本地 TokenReview API 與申請 SA token |
+| `ClusterRoleBinding` | 綁定至 chart ServiceAccount | — |
+| `Role`（namespaced）| `secrets:get,create,update` | 儲存更新後的 remote cluster token |
+| `RoleBinding`（namespaced）| 綁定至 chart ServiceAccount | — |
+
+```yaml
+# ClusterRole: 讓 kube-federated-auth Pod 可執行本地 TokenReview 及產生 SA token
+rules:
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["serviceaccounts/token"]
+  verbs: ["create"]
+```
+
+### reader（`reader-rbac.yaml`，sub cluster 啟用）
+
+Sub cluster 需安裝 reader ServiceAccount，讓 central cluster 的 kube-federated-auth 可用 reader token 呼叫該 cluster 的 TokenReview API：
+
+| 資源 | 類型 | 說明 |
+|---|---|---|
+| `ClusterRole` | `tokenreviews:create` | 允許對本 cluster API Server 執行 TokenReview |
+| `ClusterRoleBinding` | 綁定至 reader ServiceAccount | — |
+| `Role`（namespaced）| `serviceaccounts/token:create` | 允許申請 reader 自身的長期 token |
+| `RoleBinding`（namespaced）| 綁定至 reader ServiceAccount | — |
+
+---
+
+## clusterRole 說明
+
+`kubeFederatedAuth.clusterRole` 是**純文件欄位**（不傳遞給 binary），用於描述本叢集在聯邦拓撲中的角色，方便對照 `authorizedClients` 與 `remoteClusters` 的設定：
+
+| 值 | 意義 | authorizedClients 建議設定 | remoteClusters 建議設定 |
+|---|---|---|---|
+| `central` | 管理所有 sub cluster；知道全部 remote cluster | 列出每個 sub cluster 的 SA | 列出所有 sub cluster |
+| `sub-same-group` | 同一網路群組的 sub cluster，可與同組 peer 互相驗證 | 列出自身與同組 peer 的 SA | 只列出同組 peer |
+| `sub-isolated` | 獨立 sub cluster，不與其他 sub cluster 通訊 | 只列出自身 SA | 空 |
+
+設定範例：
+
+```yaml
+# central cluster
+kubeFederatedAuth:
+  clusterRole: central
+  clusterName: central
+  authorizedClients:
+    - "central/*/*"
+    - "sub-1-1/*/*"
+    - "sub-1-2/*/*"
+  remoteClusters:
+    - name: sub-1-1
+      # ...
+    - name: sub-1-2
+      # ...
+
+# sub-same-group（sub-1-1，與 sub-1-2 互通）
+kubeFederatedAuth:
+  clusterRole: sub-same-group
+  clusterName: sub-1-1
+  authorizedClients:
+    - "sub-1-1/*/*"
+    - "sub-1-2/*/*"
+  remoteClusters:
+    - name: sub-1-2
+      # ...
+
+# sub-isolated（獨立節點，無 peer）
+kubeFederatedAuth:
+  clusterRole: sub-isolated
+  clusterName: my-node
+  authorizedClients:
+    - "my-node/*/*"
+  remoteClusters: []
+```
 
 ---
 
@@ -239,15 +328,15 @@ kube-auth-proxy
 | `--token-review-url` | 能驗哪些 token |
 |---|---|
 | 不設定（預設 in-cluster API server）| 只有本 cluster 的 SA token |
-| `http://localhost:8443`（kube-federated-auth）| 所有已設定 cluster 的 SA token |
+| `http://<release>-kube-federated-auth:8443` | 所有已設定 cluster 的 SA token |
 
-本 chart 啟用後固定使用：
+本 chart 啟用後自動使用（獨立 Deployment 架構）：
 ```
---upstream=http://localhost:8080          (aqsh)
---token-review-url=http://localhost:8443  (kube-federated-auth)
+--upstream=http://localhost:8080
+--token-review-url=http://<release>-kube-federated-auth:8443   ← 指向獨立 Deployment 的 Service
 ```
 
-**cluster 識別邏輯完全在 KFA 裡，kube-auth-proxy 不知道有幾個 cluster。**
+**cluster 識別邏輯完全在 kube-federated-auth 裡，kube-auth-proxy 不知道有幾個 cluster。**
 
 ---
 
@@ -389,16 +478,16 @@ sub-1-2 / my-app
   │  Body: { "version": "v1.2.3", "environment": "prod" }
   │
   ▼
-[sub-1-1] kube-auth-proxy（sidecar :4180）
+[sub-1-1] kube-auth-proxy（aqsh Deployment sidecar :4180）
   │
   │  Step 1: 截取 Authorization Bearer token
-  │  Step 2: 呼叫 TokenReview API
-  │    POST http://localhost:8443/apis/authentication.k8s.io/v1/tokenreviews
+  │  Step 2: 呼叫 TokenReview API（透過 Service）
+  │    POST http://<release>-kube-federated-auth:8443/apis/authentication.k8s.io/v1/tokenreviews
   │    Authorization: Bearer <kube-auth-proxy 自身的 SA token>  ← authorizedClients 檢查點
   │    Body: { spec: { token: "<my-app 的 SA token>" } }
   │
   ▼
-[sub-1-1] kube-federated-auth（localhost:8443）
+[sub-1-1] kube-federated-auth（獨立 Deployment，透過 Service :8443）
   │
   │  Step 3: 驗證 kube-auth-proxy 的 SA token
   │    → JWKS 驗簽 → 識別為 "sub-1-1/<ns>/kube-federated-auth-aqsh"
@@ -538,6 +627,8 @@ helm install kfa charts/kube-federated-auth-aqsh \
 
 ### 啟用 kube-auth-proxy
 
+啟用後 kube-auth-proxy 以 **sidecar** 形式注入 aqsh Deployment，自動向 `<release>-kube-federated-auth` Service 發起 TokenReview 請求（不再是 localhost）：
+
 ```bash
 helm upgrade kfa charts/kube-federated-auth-aqsh \
   --namespace kube-system \
@@ -546,7 +637,7 @@ helm upgrade kfa charts/kube-federated-auth-aqsh \
 ```
 
 啟用後 aqsh Service 的對外 port 自動切換為 4180。  
-需確保 `kubeFederatedAuth.authorizedClients` 包含此 chart SA：
+需確保 `kubeFederatedAuth.authorizedClients` 包含 aqsh Deployment 所使用的 SA：
 
 ```yaml
 kubeFederatedAuth:
@@ -565,18 +656,18 @@ kubeFederatedAuth:
 ```yaml
 replicaCount: 1
 
-# ── 排程 ──────────────────────────────────────────────────────────────────────
+# ── 排程（兩個 Deployment 共用）─────────────────────────────────────────────
 nodeSelector: {}
 affinity: {}
 tolerations: []
-annotations: {}       # Deployment metadata annotations
-podAnnotations: {}    # Pod template annotations（e.g. prometheus.io/scrape）
-sidecars: []          # 額外注入的 sidecar containers
 
-# ── kube-federated-auth ───────────────────────────────────────────────────────
+# ── kube-federated-auth Deployment ──────────────────────────────────────────
 kubeFederatedAuth:
-  clusterRole: central          # central | sub-same-group | sub-isolated
+  clusterRole: central          # central | sub-same-group | sub-isolated（純文件）
   clusterName: central          # 本 cluster 的名稱（需在所有 cluster 中唯一）
+
+  annotations: {}               # Deployment metadata annotations
+  podAnnotations: {}            # Pod template annotations
 
   authorizedClients:
     - "central/*/*"             # 允許 central cluster 所有 SA 呼叫 TokenReview
@@ -605,16 +696,20 @@ kubeFederatedAuth:
         -----END CERTIFICATE-----
       bootstrapToken: "eyJhbGc..."  # 只用一次；KFA 會自動更新並存入 K8s Secret
 
-# ── aqsh ──────────────────────────────────────────────────────────────────────
+# ── aqsh Deployment ───────────────────────────────────────────────────────────
 aqsh:
   mode: both                    # both | api | worker
+  annotations: {}               # Deployment metadata annotations
+  podAnnotations: {}            # Pod template annotations（e.g. prometheus.io/scrape）
+  sidecars: []                  # 額外注入的 sidecar containers
   identityHeader: "X-Forwarded-User"
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true         # false 時跳過身份驗證（僅開發用）
 
-# ── kube-auth-proxy（sidecar）────────────────────────────────────────────────
+# ── kube-auth-proxy（aqsh Deployment 的 sidecar）────────────────────────────
 kubeAuthProxy:
   enabled: false
+  # tokenReviewUrl: ""          # 預設 http://<release>-kube-federated-auth:8443
   image:
     repository: ghcr.io/rophy/kube-auth-proxy
     tag: latest
@@ -830,7 +925,7 @@ KFA 需要呼叫 sub cluster 的 TokenReview API 做**權威驗證**（確認 to
 
 ### Q2: bootstrapToken 過期了怎麼辦？
 
-KFA 在 `renewBefore`（預設 48h）前自動更新，更新後儲存於 K8s Secret（`<release>-kube-federated-auth`）。只有 Secret 遺失時才需要重新提供 bootstrap token。
+KFA 在 `renewBefore`（預設 48h）前自動更新，更新後儲存於 K8s Secret（`<release>-kfa-credentials`）。只有 Secret 遺失時才需要重新提供 bootstrap token。
 
 ### Q3: Token 快取會不會導致撤銷的 token 仍然有效？
 

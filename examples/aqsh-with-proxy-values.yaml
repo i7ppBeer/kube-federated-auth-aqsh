@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Example: aqsh + kube-auth-proxy only
+#
+# Use this when kube-federated-auth is deployed separately (or on another
+# cluster) and you only need the aqsh UI + kube-auth-proxy sidecar here.
+#
+# kube-auth-proxy will call the remote kube-federated-auth Service via
+# tokenReviewUrl (see below). External traffic hits :4180 (proxy); the proxy
+# validates the Bearer token and forwards to aqsh :8080 with identity headers.
+#
+# Deploy:
+#   helm upgrade --install my-aqsh ./charts/kube-federated-auth-aqsh \
+#     -f examples/aqsh-with-proxy-values.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── kube-federated-auth — disabled ───────────────────────────────────────────
+kubeFederatedAuth:
+  enabled: false
+  # ClusterRole / ClusterRoleBinding are also skipped when disabled.
+
+# ── aqsh ─────────────────────────────────────────────────────────────────────
+aqsh:
+  enabled: true
+
+  # Point to external Redis (required when redis.enabled=false)
+  redisAddr: "my-external-redis:6379"
+
+  image:
+    repository: rophy/aqsh
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  mode: both   # "both" | "api" | "worker"
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # Headers injected by kube-auth-proxy
+  identityHeader: "X-Forwarded-User"
+  groupsHeader: "X-Forwarded-Groups"
+  requireIdentity: true
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# ── kube-auth-proxy sidecar ───────────────────────────────────────────────────
+kubeAuthProxy:
+  enabled: true
+
+  # Point to the kube-federated-auth Service in this (or another) namespace.
+  # Format: http://<service-name>.<namespace>.svc.cluster.local:<port>
+  #
+  # Examples:
+  #   Same namespace, different release:
+  #     tokenReviewUrl: "http://central-kube-federated-auth.default.svc.cluster.local:8443"
+  #   Same release (default — can leave empty to auto-resolve):
+  #     tokenReviewUrl: ""
+  tokenReviewUrl: "http://<kfa-release>-kube-federated-auth.<namespace>.svc.cluster.local:8443"
+
+  image:
+    repository: ghcr.io/rophy/kube-auth-proxy
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  port: 4180   # external-facing port; route ingress/VirtualService here
+
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 20m
+      memory: 32Mi
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+# Disabled — using external Redis; set aqsh.redisAddr above.
+redis:
+  enabled: false
+
+# ── ServiceAccount ────────────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: ""   # defaults to <release>-kube-federated-auth-aqsh

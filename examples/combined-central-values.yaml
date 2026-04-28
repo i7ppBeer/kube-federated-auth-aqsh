@@ -1,5 +1,5 @@
-# Combined chart example — central cluster
-# Deploys kube-federated-auth + aqsh in a single Deployment
+# Central cluster example — kube-federated-auth-aqsh
+# Deploys kube-federated-auth, aqsh, and Redis as independent Deployments
 
 replicaCount: 1
 
@@ -13,6 +13,9 @@ kubeFederatedAuth:
     type: ClusterIP
     port: 8443
 
+  annotations: {}
+  podAnnotations: {}
+
   resources:
     limits:
       cpu: 500m
@@ -21,6 +24,10 @@ kubeFederatedAuth:
       cpu: 100m
       memory: 128Mi
 
+  # clusterRole: informational only (not passed to binary)
+  #   central        — manages all sub clusters
+  #   sub-same-group — peers within the same network group
+  #   sub-isolated   — standalone sub cluster
   clusterRole: central
   clusterName: central
 
@@ -93,6 +100,10 @@ aqsh:
   service:
     type: ClusterIP
     port: 8080
+
+  annotations: {}
+  podAnnotations: {}
+  sidecars: []
 
   identityHeader: "X-Forwarded-User"
   groupsHeader: "X-Forwarded-Groups"

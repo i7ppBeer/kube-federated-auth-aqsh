@@ -1,12 +1,15 @@
+{{- if .Values.kubeFederatedAuth.enabled }}
+# ── kube-federated-auth Deployment ───────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ .Release.Name }}-kube-federated-auth
   labels:
     app: kube-federated-auth-aqsh
+    component: kube-federated-auth
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     release: {{ .Release.Name }}
-  {{- with .Values.annotations }}
+  {{- with .Values.kubeFederatedAuth.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -15,13 +18,15 @@ spec:
   selector:
     matchLabels:
       app: kube-federated-auth-aqsh
+      component: kube-federated-auth
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
         app: kube-federated-auth-aqsh
+        component: kube-federated-auth
         release: {{ .Release.Name }}
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.kubeFederatedAuth.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -40,7 +45,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-      {{- if .Values.kubeFederatedAuth.enabled }}
       - name: kube-federated-auth
         image: "{{ .Values.kubeFederatedAuth.image.repository }}:{{ .Values.kubeFederatedAuth.image.tag }}"
         imagePullPolicy: {{ .Values.kubeFederatedAuth.image.pullPolicy }}
@@ -68,8 +72,83 @@ spec:
           mountPath: /etc/kube-federated-auth/tokens
           readOnly: true
         {{- end }}
+      volumes:
+      - name: kfa-config
+        configMap:
+          name: {{ .Release.Name }}-kfa-config
+      {{- if .Files.Glob "files/ca-certs/*.crt" }}
+      - name: kfa-ca-certs
+        configMap:
+          name: {{ .Release.Name }}-kfa-ca-certs
+      {{- else if .Values.kubeFederatedAuth.remoteClusters }}
+      - name: kfa-ca-certs
+        secret:
+          secretName: {{ .Release.Name }}-kfa-certs
+          items:
+          {{- range .Values.kubeFederatedAuth.remoteClusters }}
+          - key: {{ .name }}-ca.crt
+            path: {{ .name }}-ca.crt
+          {{- end }}
       {{- end }}
-      {{- if .Values.aqsh.enabled }}
+      {{- if .Values.kubeFederatedAuth.remoteClusters }}
+      - name: kfa-tokens
+        secret:
+          secretName: {{ .Release.Name }}-kfa-tokens
+          items:
+          {{- range .Values.kubeFederatedAuth.remoteClusters }}
+          - key: {{ .name }}-token
+            path: {{ .name }}-token
+          {{- end }}
+      {{- end }}
+{{- end }}
+{{- if .Values.aqsh.enabled }}
+---
+# ── aqsh Deployment ───────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-aqsh
+  labels:
+    app: kube-federated-auth-aqsh
+    component: aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+  {{- with .Values.aqsh.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: kube-federated-auth-aqsh
+      component: aqsh
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: kube-federated-auth-aqsh
+        component: aqsh
+        release: {{ .Release.Name }}
+      {{- with .Values.aqsh.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
       - name: aqsh
         image: "{{ .Values.aqsh.image.repository }}:{{ .Values.aqsh.image.tag }}"
         imagePullPolicy: {{ .Values.aqsh.image.pullPolicy }}
@@ -105,9 +184,8 @@ spec:
           mountPath: /scripts
           readOnly: true
         {{- end }}
-      {{- end }}
       {{- if .Values.kubeAuthProxy.enabled }}
-      {{- $tokenReviewUrl := .Values.kubeAuthProxy.tokenReviewUrl | default (printf "http://localhost:%v" .Values.kubeFederatedAuth.service.port) }}
+      {{- $tokenReviewUrl := .Values.kubeAuthProxy.tokenReviewUrl | default (printf "http://%s-kube-federated-auth:%v" .Release.Name .Values.kubeFederatedAuth.service.port) }}
       - name: kube-auth-proxy
         image: "{{ .Values.kubeAuthProxy.image.repository }}:{{ .Values.kubeAuthProxy.image.tag }}"
         imagePullPolicy: {{ .Values.kubeAuthProxy.image.pullPolicy }}
@@ -122,49 +200,17 @@ spec:
         resources:
           {{- toYaml .Values.kubeAuthProxy.resources | nindent 10 }}
       {{- end }}
-      {{- with .Values.sidecars }}
+      {{- with .Values.aqsh.sidecars }}
       {{- toYaml . | nindent 6 }}
       {{- end }}
       volumes:
-      {{- if .Values.kubeFederatedAuth.enabled }}
-      - name: kfa-config
-        configMap:
-          name: {{ .Release.Name }}-kfa-config
-      {{- end }}
-      {{- if .Values.aqsh.enabled }}
       - name: aqsh-config
         configMap:
           name: {{ .Release.Name }}-aqsh-config
-      {{- end }}
       {{- if .Files.Glob "files/scripts/*" }}
       - name: aqsh-scripts
         configMap:
           name: {{ .Release.Name }}-aqsh-scripts
           defaultMode: 0755
       {{- end }}
-      {{- if .Values.kubeFederatedAuth.enabled }}
-      {{- if .Files.Glob "files/ca-certs/*.crt" }}
-      - name: kfa-ca-certs
-        configMap:
-          name: {{ .Release.Name }}-kfa-ca-certs
-      {{- else if .Values.kubeFederatedAuth.remoteClusters }}
-      - name: kfa-ca-certs
-        secret:
-          secretName: {{ .Release.Name }}-kfa-certs
-          items:
-          {{- range .Values.kubeFederatedAuth.remoteClusters }}
-          - key: {{ .name }}-ca.crt
-            path: {{ .name }}-ca.crt
-          {{- end }}
-      {{- end }}
-      {{- if .Values.kubeFederatedAuth.remoteClusters }}
-      - name: kfa-tokens
-        secret:
-          secretName: {{ .Release.Name }}-kfa-tokens
-          items:
-          {{- range .Values.kubeFederatedAuth.remoteClusters }}
-          - key: {{ .name }}-token
-            path: {{ .name }}-token
-          {{- end }}
-      {{- end }}
-      {{- end }}
+{{- end }}

@@ -1,5 +1,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Combined chart: kube-federated-auth + aqsh (single Deployment)
+# kube-federated-auth-aqsh — independent Deployments
+#   Deployment 1: <release>-kube-federated-auth  (kube-federated-auth)
+#   Deployment 2: <release>-aqsh                 (aqsh + optional kube-auth-proxy sidecar)
+#   Deployment 3: <release>-redis                (Redis)
 # ─────────────────────────────────────────────────────────────────────────────
 
 replicaCount: 1
@@ -21,23 +24,6 @@ tolerations: []
 #    operator: "Exists"
 #    effect: "NoSchedule"
 
-# ── Annotations ───────────────────────────────────────────────────────────────
-# Annotations added to the Deployment metadata
-annotations: {}
-
-# Annotations added to the Pod template metadata
-podAnnotations: {}
-#  prometheus.io/scrape: "true"
-#  prometheus.io/port: "8080"
-
-# ── Sidecars ──────────────────────────────────────────────────────────────────
-# Additional containers injected into the main Deployment pod
-sidecars: []
-#  - name: my-sidecar
-#    image: nginx:alpine
-#    ports:
-#      - containerPort: 80
-
 # ── kube-federated-auth ──────────────────────────────────────────────────────
 kubeFederatedAuth:
   enabled: true
@@ -51,6 +37,11 @@ kubeFederatedAuth:
     type: ClusterIP
     port: 8443
 
+  # Annotations for the kube-federated-auth Deployment metadata
+  annotations: {}
+  # Annotations for the kube-federated-auth Pod template
+  podAnnotations: {}
+
   resources:
     limits:
       cpu: 500m
@@ -59,9 +50,14 @@ kubeFederatedAuth:
       cpu: 100m
       memory: 128Mi
 
-  # NOTE: clusterRole is not a recognized field in kube-federated-auth's config
-  # format and has no effect on the binary. Kept here as documentation only.
-  # clusterRole: central
+  # clusterRole describes this cluster's role in the federation topology.
+  # Used for documentation and to guide authorizedClients / remoteClusters config.
+  # Values: central | sub-same-group | sub-isolated
+  #   central        — knows all sub clusters; authorizedClients lists every sub SA
+  #   sub-same-group — peers within the same network group (e.g. 100.x); mutual auth
+  #   sub-isolated   — standalone sub cluster; no peer-to-peer token validation
+  # NOTE: this field is informational only and is not passed to the binary.
+  clusterRole: central
 
   # Cluster name for this deployment
   clusterName: central
@@ -137,6 +133,20 @@ aqsh:
     type: ClusterIP
     port: 8080
 
+  # Annotations for the aqsh Deployment metadata
+  annotations: {}
+  # Annotations for the aqsh Pod template
+  podAnnotations: {}
+  #  prometheus.io/scrape: "true"
+  #  prometheus.io/port: "8080"
+
+  # Additional sidecar containers injected into the aqsh Deployment pod
+  sidecars: []
+  #  - name: my-sidecar
+  #    image: nginx:alpine
+  #    ports:
+  #      - containerPort: 80
+
   # Identity and group headers (from reverse proxy / kube-auth-proxy)
   identityHeader: "X-Forwarded-User"
   groupsHeader: "X-Forwarded-Groups"
@@ -162,8 +172,8 @@ aqsh:
 kubeAuthProxy:
   enabled: false
 
-  # Override --token-review-url (e.g. "http://my-existing-kube-federated-auth:8443").
-  # If empty, defaults to "http://localhost:<kubeFederatedAuth.service.port>".
+  # Override --token-review-url.
+  # If empty, defaults to "http://<release>-kube-federated-auth:<kubeFederatedAuth.service.port>".
   tokenReviewUrl: ""
 
   image:
