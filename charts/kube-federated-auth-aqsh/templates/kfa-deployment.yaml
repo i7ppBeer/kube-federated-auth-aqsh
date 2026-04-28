@@ -1,0 +1,78 @@
+{{- if and .Values.kubeFederatedAuth.enabled .Values.kubeFederatedAuth.standalone }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-kube-federated-auth
+  labels:
+    app: kube-federated-auth
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: kube-federated-auth
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: kube-federated-auth
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: kube-federated-auth
+        image: "{{ .Values.kubeFederatedAuth.image.repository }}:{{ .Values.kubeFederatedAuth.image.tag }}"
+        imagePullPolicy: {{ .Values.kubeFederatedAuth.image.pullPolicy }}
+        args:
+        - --config=/etc/kube-federated-auth/clusters.yaml
+        - --port=8443
+        - --secret-name={{ .Release.Name }}-kfa-credentials
+        ports:
+        - containerPort: 8443
+          name: http
+        resources:
+          {{- toYaml .Values.kubeFederatedAuth.resources | nindent 10 }}
+        volumeMounts:
+        - name: kfa-config
+          mountPath: /etc/kube-federated-auth
+          readOnly: true
+        {{- if or (.Files.Glob "files/ca-certs/*.crt") (.Values.kubeFederatedAuth.remoteClusters) }}
+        - name: kfa-ca-certs
+          mountPath: /etc/kube-federated-auth/ca-certs
+          readOnly: true
+        {{- end }}
+        {{- if .Values.kubeFederatedAuth.remoteClusters }}
+        - name: kfa-tokens
+          mountPath: /etc/kube-federated-auth/tokens
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: kfa-config
+        configMap:
+          name: {{ .Release.Name }}-kfa-config
+      {{- if .Files.Glob "files/ca-certs/*.crt" }}
+      - name: kfa-ca-certs
+        configMap:
+          name: {{ .Release.Name }}-kfa-ca-certs
+      {{- else if .Values.kubeFederatedAuth.remoteClusters }}
+      - name: kfa-ca-certs
+        secret:
+          secretName: {{ .Release.Name }}-kfa-certs
+          items:
+          {{- range .Values.kubeFederatedAuth.remoteClusters }}
+          - key: {{ .name }}-ca.crt
+            path: {{ .name }}-ca.crt
+          {{- end }}
+      {{- end }}
+      {{- if .Values.kubeFederatedAuth.remoteClusters }}
+      - name: kfa-tokens
+        secret:
+          secretName: {{ .Release.Name }}-kfa-tokens
+          items:
+          {{- range .Values.kubeFederatedAuth.remoteClusters }}
+          - key: {{ .name }}-token
+            path: {{ .name }}-token
+          {{- end }}
+      {{- end }}
+{{- end }}

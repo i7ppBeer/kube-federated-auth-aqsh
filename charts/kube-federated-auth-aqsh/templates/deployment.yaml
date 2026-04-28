@@ -40,7 +40,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-      {{- if .Values.kubeFederatedAuth.enabled }}
+      {{- if and .Values.kubeFederatedAuth.enabled (not .Values.kubeFederatedAuth.standalone) }}
       - name: kube-federated-auth
         image: "{{ .Values.kubeFederatedAuth.image.repository }}:{{ .Values.kubeFederatedAuth.image.tag }}"
         imagePullPolicy: {{ .Values.kubeFederatedAuth.image.pullPolicy }}
@@ -107,7 +107,14 @@ spec:
         {{- end }}
       {{- end }}
       {{- if .Values.kubeAuthProxy.enabled }}
-      {{- $tokenReviewUrl := .Values.kubeAuthProxy.tokenReviewUrl | default (printf "http://localhost:%v" .Values.kubeFederatedAuth.service.port) }}
+      {{- $tokenReviewUrl := "" }}
+      {{- if .Values.kubeAuthProxy.tokenReviewUrl }}
+      {{- $tokenReviewUrl = .Values.kubeAuthProxy.tokenReviewUrl }}
+      {{- else if .Values.kubeFederatedAuth.standalone }}
+      {{- $tokenReviewUrl = printf "http://%s-kube-federated-auth:%v" .Release.Name .Values.kubeFederatedAuth.service.port }}
+      {{- else }}
+      {{- $tokenReviewUrl = printf "http://localhost:%v" .Values.kubeFederatedAuth.service.port }}
+      {{- end }}
       - name: kube-auth-proxy
         image: "{{ .Values.kubeAuthProxy.image.repository }}:{{ .Values.kubeAuthProxy.image.tag }}"
         imagePullPolicy: {{ .Values.kubeAuthProxy.image.pullPolicy }}
@@ -126,7 +133,7 @@ spec:
       {{- toYaml . | nindent 6 }}
       {{- end }}
       volumes:
-      {{- if .Values.kubeFederatedAuth.enabled }}
+      {{- if and .Values.kubeFederatedAuth.enabled (not .Values.kubeFederatedAuth.standalone) }}
       - name: kfa-config
         configMap:
           name: {{ .Release.Name }}-kfa-config
@@ -142,7 +149,7 @@ spec:
           name: {{ .Release.Name }}-aqsh-scripts
           defaultMode: 0755
       {{- end }}
-      {{- if .Values.kubeFederatedAuth.enabled }}
+      {{- if and .Values.kubeFederatedAuth.enabled (not .Values.kubeFederatedAuth.standalone) }}
       {{- if .Files.Glob "files/ca-certs/*.crt" }}
       - name: kfa-ca-certs
         configMap:
