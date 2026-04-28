@@ -14,11 +14,7 @@ spec:
     protocol: TCP
     name: http
   selector:
-    {{- if .Values.kubeFederatedAuth.standalone }}
-    app: kube-federated-auth
-    {{- else }}
     app: kube-federated-auth-aqsh
-    {{- end }}
     release: {{ .Release.Name }}
 ---
 apiVersion: v1
