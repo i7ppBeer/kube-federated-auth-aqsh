@@ -40,6 +40,8 @@ sidecars: []
 
 # ── kube-federated-auth ──────────────────────────────────────────────────────
 kubeFederatedAuth:
+  enabled: true
+
   image:
     repository: rophy/kube-federated-auth
     tag: latest
@@ -117,6 +119,12 @@ kubeFederatedAuth:
 
 # ── aqsh ─────────────────────────────────────────────────────────────────────
 aqsh:
+  enabled: true
+
+  # Override AQSH_REDIS_ADDR (e.g. "my-redis:6379").
+  # If empty, defaults to "<release>-redis:<redis.service.port>".
+  redisAddr: ""
+
   image:
     repository: rophy/aqsh
     tag: latest
@@ -153,6 +161,10 @@ aqsh:
 # When enabled, external traffic should target :4180 (proxy), not :8080 (aqsh).
 kubeAuthProxy:
   enabled: false
+
+  # Override --token-review-url (e.g. "http://my-existing-kube-federated-auth:8443").
+  # If empty, defaults to "http://localhost:<kubeFederatedAuth.service.port>".
+  tokenReviewUrl: ""
 
   image:
     repository: ghcr.io/rophy/kube-auth-proxy
@@ -253,3 +265,21 @@ istio:
     #          host: <release>-kube-federated-auth
     #          port:
     #            number: 8443
+
+# ── Usage Examples ────────────────────────────────────────────────────────────
+# Example: only aqsh + kube-auth-proxy (kube-federated-auth already deployed elsewhere)
+#
+# kubeFederatedAuth:
+#   enabled: false
+#
+# aqsh:
+#   enabled: true
+#   redisAddr: "my-existing-redis:6379"
+#
+# redis:
+#   enabled: false
+#
+# kubeAuthProxy:
+#   enabled: true
+#   tokenReviewUrl: "http://my-existing-kube-federated-auth:8443"
+#   port: 4180
