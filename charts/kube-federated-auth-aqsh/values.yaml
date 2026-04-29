@@ -24,7 +24,7 @@ tolerations: []
 #    operator: "Exists"
 #    effect: "NoSchedule"
 
-# ── kube-federated-auth ──────────────────────────────────────────────────────
+# ── kube-federated-auth ───────────────────────────────────────────────────────
 kubeFederatedAuth:
   enabled: true
 
@@ -132,6 +132,8 @@ aqsh:
   service:
     type: ClusterIP
     port: 8080
+    # Custom Service name. If empty, defaults to "<release>-aqsh".
+    name: ""
 
   # Annotations for the aqsh Deployment metadata
   annotations: {}
@@ -186,7 +188,7 @@ aqsh:
       cpu: 100m
       memory: 128Mi
 
-# ── kube-auth-proxy (sidecar) ────────────────────────────────────────────────
+# ── kube-auth-proxy (sidecar) ─────────────────────────────────────────────────
 # Reverse proxy sidecar that validates Bearer tokens via kube-federated-auth
 # and injects X-Forwarded-User/Groups/Extra-Cluster-Name headers to aqsh.
 # When enabled, external traffic should target :4180 (proxy), not :8080 (aqsh).
