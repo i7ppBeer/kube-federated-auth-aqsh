@@ -51,7 +51,7 @@ data:
     {{- if .Values.aqsh.tasks }}
     {{- toYaml .Values.aqsh.tasks | nindent 4 }}
     {{- else }}
-      []
+      {}
     {{- end }}
 ---
 {{- if .Values.aqsh.scripts }}

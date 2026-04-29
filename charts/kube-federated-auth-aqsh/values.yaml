@@ -1,9 +1,9 @@
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
 # kube-federated-auth-aqsh — independent Deployments
 #   Deployment 1: <release>-kube-federated-auth  (kube-federated-auth)
 #   Deployment 2: <release>-aqsh                 (aqsh + optional kube-auth-proxy sidecar)
 #   Deployment 3: <release>-redis                (Redis)
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
 
 replicaCount: 1
 
@@ -113,7 +113,7 @@ kubeFederatedAuth:
   #   #   Never commit a real token to git.
   #   bootstrapToken: ""
 
-# ── aqsh ─────────────────────────────────────────────────────────────────────
+# ── aqsh ──────────────────────────────────────────────────────────────────────
 aqsh:
   enabled: true
 
@@ -153,8 +153,9 @@ aqsh:
   requireIdentity: true
 
   # Task definitions (mounted at /etc/aqsh/tasks.yaml)
-  tasks: []
-  # - name: deploy
+  # Format: map[string]TaskDef — key is the task name.
+  tasks: {}
+  # deploy:
   #   script: /scripts/deploy.sh
   #   description: "Deploy application"
   #   timeout: 10m
