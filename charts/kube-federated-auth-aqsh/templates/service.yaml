@@ -7,6 +7,10 @@ metadata:
     app: kube-federated-auth-aqsh
     component: kube-federated-auth
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+  {{- with .Values.kubeFederatedAuth.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.kubeFederatedAuth.service.type }}
   ports:
@@ -29,6 +33,10 @@ metadata:
     app: kube-federated-auth-aqsh
     component: aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+  {{- with .Values.aqsh.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.aqsh.service.type }}
   ports:

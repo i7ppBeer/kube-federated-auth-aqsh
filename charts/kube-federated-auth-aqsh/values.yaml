@@ -36,6 +36,8 @@ kubeFederatedAuth:
   service:
     type: ClusterIP
     port: 8443
+    annotations: {}
+    #  cloud.google.com/neg: '{"ingress": true}'
 
   # Annotations for the kube-federated-auth Deployment metadata
   annotations: {}
@@ -134,6 +136,8 @@ aqsh:
     port: 8080
     # Custom Service name. If empty, defaults to "<release>-aqsh".
     name: ""
+    annotations: {}
+    #  prometheus.io/scrape: "true"
 
   # Annotations for the aqsh Deployment metadata
   annotations: {}
@@ -283,21 +287,24 @@ istio:
     enabled: false
     # Hostnames this VirtualService applies to
     hosts: []
-    #  - kube-federated-auth.example.com
+    #  - aqsh.example.com
     # Istio Gateways to attach to
     gateways: []
     #  - istio-system/ingressgateway
-    # HTTP routes for kube-federated-auth (:8443)
-    # kube-federated-auth serves plain HTTP (not TLS); use http routes, not tls.
+    #  - istio-system/internal-gateway
+    # When true, auto-generates a catch-all http route to the aqsh service.
+    # Targets kubeAuthProxy.port (4180) if kubeAuthProxy.enabled, else aqsh.service.port (8080).
+    autoRouteToAqsh: true
+    # Additional custom http routes (inserted before the auto-route).
     http: []
     #  - match:
     #      - uri:
-    #          prefix: /
+    #          prefix: /healthz
     #    route:
     #      - destination:
-    #          host: <release>-kube-federated-auth
+    #          host: my-service
     #          port:
-    #            number: 8443
+    #            number: 8080
 
 # ── Usage Examples ────────────────────────────────────────────────────────────
 # Example: only aqsh + kube-auth-proxy (kube-federated-auth already deployed elsewhere)
