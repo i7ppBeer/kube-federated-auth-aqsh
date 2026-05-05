@@ -2,7 +2,7 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: {{ .Release.Name }}-kube-federated-auth
+  name: {{ .Release.Name }}-aqsh
   labels:
     app: kube-federated-auth-aqsh
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
@@ -16,8 +16,23 @@ spec:
   gateways:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.istio.virtualService.http }}
+  {{- $hasHttp := or .Values.istio.virtualService.http .Values.istio.virtualService.autoRouteToAqsh }}
+  {{- if $hasHttp }}
   http:
+  {{- with .Values.istio.virtualService.http }}
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.istio.virtualService.autoRouteToAqsh }}
+    {{- $aqshSvcName := .Values.aqsh.service.name | default (printf "%s-aqsh" .Release.Name) }}
+    {{- $port := .Values.kubeAuthProxy.port }}
+    {{- if not .Values.kubeAuthProxy.enabled }}
+      {{- $port = .Values.aqsh.service.port }}
+    {{- end }}
+    - route:
+      - destination:
+          host: {{ $aqshSvcName }}
+          port:
+            number: {{ $port }}
+  {{- end }}
   {{- end }}
 {{- end }}
