@@ -158,8 +158,17 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Task definitions (mounted at /etc/aqsh/tasks.yaml)
-  # Format: map[string]TaskDef — key is the task name.
+  # Optional top-level defaults applied to all tasks (mounted at /etc/aqsh/tasks.yaml).
+  # These values are used when a task does not define them explicitly.
+  defaults: {}
+  # timeout: 5m
+  # max_retry: 3
+  # retry_delay: 30s
+  # queue: default
+  # log_retention: 24h
+
+  # Task definitions (mounted at /etc/aqsh/tasks.yaml).
+  # Format: map[string]TaskDef — key is the task name (aqsh native map schema).
   tasks: {}
   # deploy:
   #   script: /scripts/deploy.sh

@@ -47,11 +47,14 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   tasks.yaml: |
+    {{- if .Values.aqsh.defaults }}
+    defaults:
+    {{- toYaml .Values.aqsh.defaults | nindent 6 }}
+    {{- end }}
     tasks:
     {{- if .Values.aqsh.tasks }}
-    {{- toYaml .Values.aqsh.tasks | nindent 4 }}
-    {{- else }}
-      {}
+    {{- toYaml .Values.aqsh.tasks | nindent 6 }}
+    {{- else }} {}
     {{- end }}
 ---
 {{- if .Values.aqsh.scripts }}
