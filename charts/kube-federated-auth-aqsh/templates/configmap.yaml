@@ -47,15 +47,11 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   tasks.yaml: |
+    {{- $config := dict "tasks" (default dict .Values.aqsh.tasks) }}
     {{- if .Values.aqsh.defaults }}
-    defaults:
-    {{- toYaml .Values.aqsh.defaults | nindent 6 }}
+    {{- $_ := set $config "defaults" .Values.aqsh.defaults }}
     {{- end }}
-    tasks:
-    {{- if .Values.aqsh.tasks }}
-    {{- toYaml .Values.aqsh.tasks | nindent 6 }}
-    {{- else }} {}
-    {{- end }}
+    {{- toYaml $config | nindent 4 }}
 ---
 {{- if .Values.aqsh.scripts }}
 apiVersion: v1
