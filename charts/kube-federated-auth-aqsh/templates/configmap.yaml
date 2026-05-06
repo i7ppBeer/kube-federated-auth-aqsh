@@ -67,6 +67,12 @@ data:
         {{- if .queue }}
         queue: {{ .queue | quote }}
         {{- end }}
+        {{- if .allowed_users }}
+        allowed_users:
+          {{- range .allowed_users }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
         {{- if .allowed_groups }}
         allowed_groups:
           {{- range .allowed_groups }}
@@ -88,6 +94,12 @@ data:
             {{- end }}
             {{- if .pattern }}
             pattern: {{ .pattern | quote }}
+            {{- end }}
+            {{- if .min }}
+            min: {{ .min }}
+            {{- end }}
+            {{- if .max }}
+            max: {{ .max }}
             {{- end }}
             {{- if .enum }}
             enum:
