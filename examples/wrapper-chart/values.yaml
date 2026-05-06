@@ -1,0 +1,41 @@
+# ── kube-federated-auth-aqsh subchart values ─────────────────────────────────
+# All ConfigMaps are managed by this wrapper chart's templates/.
+# The subchart's own ConfigMap generation is disabled.
+kube-federated-auth-aqsh:
+  kubeFederatedAuth:
+    enabled: true
+    configMap:
+      create: false     # ← wrapper chart templates/ takes over
+
+    clusterName: central
+    clusterRole: central
+    authorizedClients:
+      - "central/*/*"
+
+    localCluster:
+      issuer: "https://kubernetes.default.svc.cluster.local"
+      caCertPath: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+      tokenPath: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+    remoteClusters: []
+
+  aqsh:
+    enabled: true
+    configMap:
+      create: false     # ← wrapper chart templates/ takes over
+
+    mode: both
+    requireIdentity: true
+    identityHeader: "X-Forwarded-User"
+    groupsHeader: "X-Forwarded-Groups"
+
+  kubeAuthProxy:
+    enabled: true
+    port: 4180
+
+  redis:
+    enabled: true
+
+  serviceAccount:
+    create: true
+    name: kube-federated-auth-aqsh

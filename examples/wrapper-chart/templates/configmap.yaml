@@ -1,0 +1,40 @@
+{{- $subchart := index .Values "kube-federated-auth-aqsh" }}
+{{- if $subchart.kubeFederatedAuth.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-kfa-config
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+  clusters.yaml: |
+{{ .Files.Get "files/clusters.yaml" | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-aqsh-config
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+  tasks.yaml: |
+{{ .Files.Get "files/tasks.yaml" | indent 4 }}
+---
+{{- $scripts := .Files.Glob "files/scripts/*" }}
+{{- if $scripts }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-aqsh-scripts
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+{{- range $path, $content := $scripts }}
+  {{ base $path }}: |
+{{ $content | toString | indent 4 }}
+{{- end }}
+{{- end }}

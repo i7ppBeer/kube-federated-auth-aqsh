@@ -27,6 +27,10 @@ tolerations: []
 # ── kube-federated-auth ───────────────────────────────────────────────────────
 kubeFederatedAuth:
   enabled: true
+  # When false, suppresses generation of the kfa-config ConfigMap.
+  # Set to false when a parent/wrapper chart manages the ConfigMap via its own templates/.
+  configMap:
+    create: true
 
   image:
     repository: rophy/kube-federated-auth
@@ -118,6 +122,11 @@ kubeFederatedAuth:
 # ── aqsh ──────────────────────────────────────────────────────────────────────
 aqsh:
   enabled: true
+  # When false, suppresses generation of the aqsh-config ConfigMap (tasks.yaml)
+  # and the aqsh-scripts ConfigMap. Set to false when a parent/wrapper chart manages
+  # these ConfigMaps via its own templates/.
+  configMap:
+    create: true
 
   # Override AQSH_REDIS_ADDR (e.g. "my-redis:6379").
   # If empty, defaults to "<release>-redis:<redis.service.port>".
