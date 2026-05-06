@@ -109,9 +109,9 @@ aqsh:
   groupsHeader: "X-Forwarded-Groups"
   requireIdentity: true
 
-  # Task definitions
+  # Task definitions (aqsh native map schema)
   tasks:
-    - name: deploy
+    deploy:
       script: /scripts/deploy.sh
       description: "Deploy application"
       allowed_groups:
