@@ -100,6 +100,12 @@ kubeFederatedAuth:
   # apiServer  — actual network-accessible API server URL (used for TokenReview and
   #             JWKS fetch when issuer is not publicly reachable)
   remoteClusters: []
+
+  # Extra files to inject into the kfa-config ConfigMap data section.
+  # Each key becomes a filename; value is the raw file content.
+  extraConfigs: {}
+  # custom.yaml: |
+  #   some_key: some_value
   # Example:
   # - name: sub-1-1
   #   issuer: "https://kubernetes.default.svc.cluster.local"  # JWT iss claim (kubeadm default)
@@ -186,6 +192,12 @@ aqsh:
   #       required: true
   #       type: string
   #       pattern: '^v?\d+\.\d+\.\d+$'
+
+  # Extra files to inject into the aqsh-config ConfigMap data section.
+  # Each key becomes a filename; value is the raw file content.
+  extraConfigs: {}
+  # extra.yaml: |
+  #   some_key: some_value
 
   # Shell scripts mounted at /scripts/<name> (mode 0755)
   scripts: {}

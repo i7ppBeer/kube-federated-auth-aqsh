@@ -36,6 +36,10 @@ data:
         ca_cert: "/etc/kube-federated-auth/ca-certs/{{ .name }}-ca.crt"
         token_path: "/etc/kube-federated-auth/tokens/{{ .name }}-token"
     {{- end }}
+  {{- range $key, $value := .Values.kubeFederatedAuth.extraConfigs }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
 ---
 {{- end }}
 apiVersion: v1
@@ -110,6 +114,10 @@ data:
           {{- end }}
         {{- end }}
     {{- end }}
+  {{- range $key, $value := .Values.aqsh.extraConfigs }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
 ---
 {{- if .Values.aqsh.scripts }}
 apiVersion: v1
