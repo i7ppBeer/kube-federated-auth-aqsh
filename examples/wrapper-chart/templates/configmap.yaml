@@ -12,6 +12,7 @@ data:
 {{ .Files.Get "files/clusters.yaml" | indent 4 }}
 {{- end }}
 ---
+{{- if $subchart.aqsh.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,5 +37,6 @@ data:
 {{- range $path, $content := $scripts }}
   {{ base $path }}: |
 {{ $content | toString | indent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}
