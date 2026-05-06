@@ -47,11 +47,57 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   tasks.yaml: |
-    {{- $config := dict "tasks" (default dict .Values.aqsh.tasks) }}
     {{- if .Values.aqsh.defaults }}
-    {{- $_ := set $config "defaults" .Values.aqsh.defaults }}
+    defaults:
+{{ toYaml .Values.aqsh.defaults | indent 6 }}
     {{- end }}
-    {{- toYaml $config | nindent 4 }}
+    tasks:
+    {{- range .Values.aqsh.tasks }}
+      {{ .name }}:
+        script: {{ .script | quote }}
+        {{- if .description }}
+        description: {{ .description | quote }}
+        {{- end }}
+        {{- if .timeout }}
+        timeout: {{ .timeout | quote }}
+        {{- end }}
+        {{- if hasKey . "max_retry" }}
+        max_retry: {{ .max_retry }}
+        {{- end }}
+        {{- if .queue }}
+        queue: {{ .queue | quote }}
+        {{- end }}
+        {{- if .allowed_groups }}
+        allowed_groups:
+          {{- range .allowed_groups }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        {{- if .input }}
+        input:
+          {{- range .input }}
+          - name: {{ .name | quote }}
+            env: {{ .env | quote }}
+            required: {{ .required }}
+            type: {{ .type | quote }}
+            {{- if .description }}
+            description: {{ .description | quote }}
+            {{- end }}
+            {{- if .default }}
+            default: {{ .default | quote }}
+            {{- end }}
+            {{- if .pattern }}
+            pattern: {{ .pattern | quote }}
+            {{- end }}
+            {{- if .enum }}
+            enum:
+              {{- range .enum }}
+              - {{ . | quote }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+    {{- end }}
 ---
 {{- if .Values.aqsh.scripts }}
 apiVersion: v1
