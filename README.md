@@ -1,5 +1,14 @@
 # kube-federated-auth-aqsh
 
+## 最近修改記錄
+
+| 日期 | 功能 | 說明 |
+|---|---|---|
+| 2026-05-06 | `configMap.create` 開關 | 在 `kubeFederatedAuth` 與 `aqsh` section 新增 `configMap.create` 欄位（預設 `true`）。設為 `false` 時，subchart 不再自動產生對應的 ConfigMap，讓 parent/wrapper chart 可透過自己的 `templates/` 接管。 |
+| 2026-05-06 | `examples/wrapper-chart/` | 新增完整 wrapper chart 範例，示範如何以本地 `files/` 管理 `tasks.yaml`、`clusters.yaml` 及 shell scripts，並透過 `configMap.create: false` 停用 subchart 的 ConfigMap 自動生成。 |
+
+---
+
 整合 [kube-federated-auth](https://github.com/rophy/kube-federated-auth)、[kube-auth-proxy](https://github.com/rophy/kube-auth-proxy) 與 [aqsh](https://github.com/rophy/aqsh) 的 Kubernetes Helm Chart，用於多叢集環境下的跨叢集身份驗證與非同步任務執行。
 
 ## 目錄

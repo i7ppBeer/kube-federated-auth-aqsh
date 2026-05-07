@@ -1,0 +1,10 @@
+apiVersion: v2
+name: my-aqsh-deployment
+description: |
+  Wrapper chart that uses kube-federated-auth-aqsh as a dependency
+  and manages all ConfigMap content via local files/.
+version: 0.1.0
+dependencies:
+  - name: kube-federated-auth-aqsh
+    version: ">=0.1.0"
+    repository: "https://i7ppBeer.github.io/kube-federated-auth-aqsh"

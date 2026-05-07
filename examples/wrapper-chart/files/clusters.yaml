@@ -1,0 +1,28 @@
+# kube-federated-auth clusters configuration
+# This file is read by the wrapper chart's templates/configmap.yaml
+# and injected into the <release>-kfa-config ConfigMap.
+
+authorized_clients:
+  - "central/*/*"
+
+cache:
+  ttl: 60
+  max_entries: 1000
+
+renewal:
+  interval: "1h"
+  token_duration: "168h"
+  renew_before: "48h"
+
+clusters:
+  central:
+    issuer: "https://kubernetes.default.svc.cluster.local"
+    ca_cert: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    token_path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+  # Example remote cluster (uncomment and fill in):
+  # sub-1-1:
+  #   issuer: "https://kubernetes.default.svc.cluster.local"
+  #   api_server: "https://10.1.1.1:6443"
+  #   ca_cert: "/etc/kube-federated-auth/ca-certs/sub-1-1-ca.crt"
+  #   token_path: "/etc/kube-federated-auth/tokens/sub-1-1-token"

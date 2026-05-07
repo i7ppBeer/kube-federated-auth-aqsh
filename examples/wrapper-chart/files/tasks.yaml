@@ -1,0 +1,43 @@
+# aqsh tasks configuration
+# This file is read by the wrapper chart's templates/configmap.yaml
+# and injected into the <release>-aqsh-config ConfigMap.
+#
+# Format: top-level keys are task names.
+
+defaults:
+  timeout: 5m
+  queue: default
+
+tasks:
+  deploy:
+    script: /scripts/deploy.sh
+    description: "Deploy application to target environment"
+    timeout: 10m
+    max_retry: 2
+    allowed_groups:
+      - deploy-team
+      - system:serviceaccounts:ops
+    input:
+      - name: version
+        env: VERSION
+        required: true
+        type: string
+        description: "Semantic version to deploy (e.g. v1.2.3)"
+        pattern: '^v?\d+\.\d+\.\d+$'
+      - name: environment
+        env: ENVIRONMENT
+        required: true
+        type: string
+        enum: [dev, staging, prod]
+
+  rollback:
+    script: /scripts/rollback.sh
+    description: "Rollback to a previous version"
+    timeout: 5m
+    allowed_groups:
+      - deploy-team
+    input:
+      - name: version
+        env: VERSION
+        required: true
+        type: string

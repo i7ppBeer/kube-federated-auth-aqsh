@@ -1,0 +1,6 @@
+dependencies:
+- name: kube-federated-auth-aqsh
+  repository: file://../../charts/kube-federated-auth-aqsh
+  version: 1.0.0
+digest: sha256:7b163edca6d14830bc12499ab2dfc9eae5865f05680dfc12cf6ee1d7d59406bb
+generated: "2026-05-07T00:05:44.999652169Z"
