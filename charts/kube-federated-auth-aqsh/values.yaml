@@ -203,6 +203,12 @@ aqsh:
   #   set -euo pipefail
   #   echo "Deploying $VERSION to $ENVIRONMENT (submitter: $AQSH_SUBMITTER)"
 
+  # Additional envFrom sources injected into the aqsh container.
+  # Useful for importing all keys from a Kubernetes Secret as environment variables.
+  extraEnvFrom: []
+  # - secretRef:
+  #     name: aqsh-secrets
+
   resources:
     limits:
       cpu: 500m
@@ -334,6 +340,9 @@ istio:
 # aqsh:
 #   enabled: true
 #   redisAddr: "my-existing-redis:6379"
+#   extraEnvFrom:
+#     - secretRef:
+#         name: aqsh-secrets
 #
 # redis:
 #   enabled: false
