@@ -103,7 +103,7 @@ spec:
 {{- end }}
 {{- if .Values.aqsh.enabled }}
 ---
-# ── aqsh Deployment ───────────────────────────────────────────────────────────
+# ── aqsh Deployment ────────────────────────────────────────────────────────��[...]
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -169,6 +169,10 @@ spec:
           value: {{ .Values.aqsh.requireIdentity | quote }}
         - name: AQSH_TASKS_CONFIG
           value: "/etc/aqsh/tasks.yaml"
+        {{- with .Values.aqsh.extraEnvFrom }}
+        envFrom:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         ports:
         - containerPort: 8080
           name: http
