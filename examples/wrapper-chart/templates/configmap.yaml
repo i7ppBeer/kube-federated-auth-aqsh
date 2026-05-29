@@ -1,5 +1,5 @@
 {{- $subchart := index .Values "kube-federated-auth-aqsh" }}
-{{- if $subchart.kubeFederatedAuth.enabled }}
+{{- if and $subchart.kubeFederatedAuth.enabled (not $subchart.kubeFederatedAuth.configMap.create) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,7 +28,7 @@ data:
 {{- end }}
 {{- end }}
 ---
-{{- if $subchart.aqsh.enabled }}
+{{- if and $subchart.aqsh.enabled (not $subchart.aqsh.configMap.create) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
