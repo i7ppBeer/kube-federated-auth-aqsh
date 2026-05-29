@@ -183,7 +183,7 @@ spec:
         - name: aqsh-config
           mountPath: /etc/aqsh
           readOnly: true
-        {{- if .Values.aqsh.scripts }}
+        {{- if or .Values.aqsh.scripts .Values.aqsh.scriptsConfigMap.enabled }}
         - name: aqsh-scripts
           mountPath: /scripts
           readOnly: true
@@ -211,7 +211,7 @@ spec:
       - name: aqsh-config
         configMap:
           name: {{ .Release.Name }}-aqsh-config
-      {{- if .Values.aqsh.scripts }}
+      {{- if or .Values.aqsh.scripts .Values.aqsh.scriptsConfigMap.enabled }}
       - name: aqsh-scripts
         configMap:
           name: {{ .Release.Name }}-aqsh-scripts

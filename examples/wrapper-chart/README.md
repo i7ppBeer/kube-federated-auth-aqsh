@@ -8,7 +8,7 @@
 ```
 my-aqsh-deployment/          ← 你的 wrapper chart
 ├── Chart.yaml               ← dependency: kube-federated-auth-aqsh
-├── values.yaml              ← subchart 設定（含 configMap.create: false）
+├── values.yaml              ← subchart 設定（含 configMap.create: false + scriptsConfigMap.enabled）
 ├── files/
 │   ├── tasks.yaml           ← aqsh task 定義（純 YAML，非 template）
 │   ├── clusters.yaml        ← kfa clusters 設定（純 YAML）
@@ -62,7 +62,8 @@ helm upgrade my-release . -n my-namespace
 
 ## 關鍵設定
 
-`values.yaml` 中透過 `configMap.create: false` 停用 subchart 自動產生的 ConfigMap：
+`values.yaml` 中透過 `configMap.create: false` 停用 subchart 自動產生的 ConfigMap，
+並啟用 `scriptsConfigMap.enabled` 讓 subchart 仍會 mount `<release>-aqsh-scripts`：
 
 ```yaml
 kube-federated-auth-aqsh:
@@ -72,4 +73,6 @@ kube-federated-auth-aqsh:
   aqsh:
     configMap:
       create: false   # ← 由本 wrapper chart 的 templates/ 接管
+    scriptsConfigMap:
+      enabled: true   # ← 仍掛載 <release>-aqsh-scripts
 ```

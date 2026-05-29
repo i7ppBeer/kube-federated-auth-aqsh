@@ -203,6 +203,11 @@ aqsh:
   #   set -euo pipefail
   #   echo "Deploying $VERSION to $ENVIRONMENT (submitter: $AQSH_SUBMITTER)"
 
+  # Mount scripts ConfigMap even when scripts are not defined inline in values.
+  # Useful for parent/wrapper charts that create <release>-aqsh-scripts via files/.
+  scriptsConfigMap:
+    enabled: false
+
   # Additional envFrom sources injected into the aqsh container.
   # Useful for importing all keys from a Kubernetes Secret as environment variables.
   extraEnvFrom: []
