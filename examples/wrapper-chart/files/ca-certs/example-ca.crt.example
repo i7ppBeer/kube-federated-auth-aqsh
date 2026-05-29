@@ -1,0 +1,6 @@
+# Rename this file to *.crt (for example: sub-1-1-ca.crt) to include it in
+# the wrapper-generated ConfigMap <release>-kfa-ca-certs.
+#
+# -----BEGIN CERTIFICATE-----
+# MIIB...REPLACE_WITH_REAL_CA_CERT...
+# -----END CERTIFICATE-----

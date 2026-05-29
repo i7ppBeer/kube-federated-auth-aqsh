@@ -10,6 +10,22 @@ metadata:
 data:
   clusters.yaml: |
 {{ .Files.Get "files/clusters.yaml" | indent 4 }}
+{{- $caCerts := .Files.Glob "files/ca-certs/*.crt" }}
+{{- if $caCerts }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-kfa-ca-certs
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+{{- range $path, $content := $caCerts }}
+  {{ base $path }}: |
+{{ $content | toString | indent 4 }}
+{{- end }}
+{{- end }}
 {{- end }}
 ---
 {{- if $subchart.aqsh.enabled }}

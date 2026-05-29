@@ -62,7 +62,7 @@ spec:
         - name: kfa-config
           mountPath: /etc/kube-federated-auth
           readOnly: true
-        {{- if or (.Files.Glob "files/ca-certs/*.crt") (.Values.kubeFederatedAuth.remoteClusters) }}
+        {{- if or (.Files.Glob "files/ca-certs/*.crt") .Values.kubeFederatedAuth.caCertsConfigMap.enabled (.Values.kubeFederatedAuth.remoteClusters) }}
         - name: kfa-ca-certs
           mountPath: /etc/kube-federated-auth/ca-certs
           readOnly: true
@@ -77,6 +77,10 @@ spec:
         configMap:
           name: {{ .Release.Name }}-kfa-config
       {{- if .Files.Glob "files/ca-certs/*.crt" }}
+      - name: kfa-ca-certs
+        configMap:
+          name: {{ .Release.Name }}-kfa-ca-certs
+      {{- else if .Values.kubeFederatedAuth.caCertsConfigMap.enabled }}
       - name: kfa-ca-certs
         configMap:
           name: {{ .Release.Name }}-kfa-ca-certs

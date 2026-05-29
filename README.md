@@ -4,6 +4,7 @@
 
 | 日期 | 功能 | 說明 |
 |---|---|---|
+| 2026-05-29 | `kubeFederatedAuth.caCertsConfigMap.enabled` | 新增 CA 掛載開關。當 parent/wrapper chart 以 `files/ca-certs/*.crt` 自行建立 `<release>-kfa-ca-certs` 時，subchart 可直接 mount `/etc/kube-federated-auth/ca-certs`。 |
 | 2026-05-29 | `aqsh.scriptsConfigMap.enabled` | 新增 scripts 掛載開關。當 parent/wrapper chart 以 `files/` 自行建立 `<release>-aqsh-scripts` 時，即使 `aqsh.scripts` 為空，subchart 仍可 mount `/scripts`。 |
 | 2026-05-06 | `configMap.create` 開關 | 在 `kubeFederatedAuth` 與 `aqsh` section 新增 `configMap.create` 欄位（預設 `true`）。設為 `false` 時，subchart 不再自動產生對應的 ConfigMap，讓 parent/wrapper chart 可透過自己的 `templates/` 接管。 |
 | 2026-05-06 | `examples/wrapper-chart/` | 新增完整 wrapper chart 範例，示範如何以本地 `files/` 管理 `tasks.yaml`、`clusters.yaml` 及 shell scripts，並透過 `configMap.create: false` 停用 subchart 的 ConfigMap 自動生成。 |
@@ -852,6 +853,18 @@ aqsh:
 
 > `scriptsConfigMap.enabled=true` 僅控制是否掛載 `<release>-aqsh-scripts`。  
 > 實際 ConfigMap 內容可來自 `aqsh.scripts`（subchart 自動生成）或 parent/wrapper 自行生成。
+
+若你使用 parent/wrapper chart 並由 wrapper 透過 `files/ca-certs/*.crt` 產生
+`<release>-kfa-ca-certs` ConfigMap，請額外啟用：
+
+```yaml
+kubeFederatedAuth:
+  caCertsConfigMap:
+    enabled: true
+```
+
+> `caCertsConfigMap.enabled=true` 僅控制是否掛載 `<release>-kfa-ca-certs`。  
+> 若 subchart 本身 `files/ca-certs` 有檔案，會優先使用 subchart 內建來源。
 
 ### Vault Secrets
 

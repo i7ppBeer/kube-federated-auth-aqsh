@@ -6,6 +6,9 @@ kube-federated-auth-aqsh:
     enabled: true
     configMap:
       create: false     # ← wrapper chart templates/ takes over
+    # Enable when wrapper provides files/ca-certs/*.crt and generates <release>-kfa-ca-certs.
+    # caCertsConfigMap:
+    #   enabled: true
 
     clusterName: central
     clusterRole: central

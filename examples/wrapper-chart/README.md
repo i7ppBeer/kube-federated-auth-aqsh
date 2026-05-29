@@ -12,6 +12,8 @@ my-aqsh-deployment/          ← 你的 wrapper chart
 ├── files/
 │   ├── tasks.yaml           ← aqsh task 定義（純 YAML，非 template）
 │   ├── clusters.yaml        ← kfa clusters 設定（純 YAML）
+│   ├── ca-certs/            ← kfa CA 憑證（可選）
+│   │   └── sub-1-1-ca.crt
 │   └── scripts/
 │       ├── deploy.sh        ← 部署 script
 │       └── rollback.sh      ← 回滾 script
@@ -45,6 +47,11 @@ files/scripts/*.sh
       │ .Files.Glob
       ▼
 templates/configmap.yaml  →  ConfigMap: <release>-aqsh-scripts
+
+files/ca-certs/*.crt
+  │ .Files.Glob
+  ▼
+templates/configmap.yaml  →  ConfigMap: <release>-kfa-ca-certs
 ```
 
 ## 使用方式
@@ -75,4 +82,10 @@ kube-federated-auth-aqsh:
       create: false   # ← 由本 wrapper chart 的 templates/ 接管
     scriptsConfigMap:
       enabled: true   # ← 仍掛載 <release>-aqsh-scripts
+
+  # 可選：若 wrapper 提供 files/ca-certs/*.crt 並生成 <release>-kfa-ca-certs
+  # 再啟用此開關讓 subchart mount CA 憑證
+  # kubeFederatedAuth:
+  #   caCertsConfigMap:
+  #     enabled: true
 ```

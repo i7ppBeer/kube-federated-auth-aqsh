@@ -119,6 +119,11 @@ kubeFederatedAuth:
   #   #   Never commit a real token to git.
   #   bootstrapToken: ""
 
+  # Mount <release>-kfa-ca-certs ConfigMap even when CA files are not defined
+  # inside this subchart files/ca-certs. Useful for parent/wrapper-managed CA bundles.
+  caCertsConfigMap:
+    enabled: false
+
 # ── aqsh ──────────────────────────────────────────────────────────────────────
 aqsh:
   enabled: true
