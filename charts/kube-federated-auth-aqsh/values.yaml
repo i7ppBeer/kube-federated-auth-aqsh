@@ -48,6 +48,12 @@ kubeFederatedAuth:
   # Annotations for the kube-federated-auth Pod template
   podAnnotations: {}
 
+  # RBAC configuration
+  # Control whether ClusterRole/ClusterRoleBinding are created by the chart
+  rbac:
+    # Set to false if you manage ClusterRole/ClusterRoleBinding externally
+    createClusterRole: true
+
   resources:
     limits:
       cpu: 500m
@@ -123,6 +129,20 @@ kubeFederatedAuth:
   # inside this subchart files/ca-certs. Useful for parent/wrapper-managed CA bundles.
   caCertsConfigMap:
     enabled: false
+
+  # External token secret mount configuration.
+  # Tokens are mounted into /etc/kube-federated-auth/tokens/.
+  # Each item is used as both the Secret data key and the mounted filename.
+  # When items is non-empty, this section drives the kfa-tokens volume instead
+  # of the auto-generated items from remoteClusters.
+  tokens:
+    # Name of the Kubernetes Secret to mount tokens from.
+    # If empty, defaults to "<release>-kfa-tokens".
+    secretName: ""
+    # List of Secret data keys to mount. Each entry is used as both key and path.
+    items: []
+    #  - aaa-token
+    #  - bbb-token
 
 # ── aqsh ──────────────────────────────────────────────────────────────────────
 aqsh:
@@ -309,6 +329,9 @@ reader:
   enabled: false
   serviceAccountName: kube-federated-auth-reader
   namespace: kube-system
+  rbac:
+    # Set to false if you manage ClusterRole/ClusterRoleBinding externally
+    createClusterRole: true
 
 # ── Shared ServiceAccount ─────────────────────────────────────────────────────
 serviceAccount:

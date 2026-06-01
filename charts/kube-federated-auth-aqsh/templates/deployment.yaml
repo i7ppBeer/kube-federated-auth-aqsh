@@ -67,7 +67,7 @@ spec:
           mountPath: /etc/kube-federated-auth/ca-certs
           readOnly: true
         {{- end }}
-        {{- if .Values.kubeFederatedAuth.remoteClusters }}
+        {{- if .Values.kubeFederatedAuth.tokens.items }}
         - name: kfa-tokens
           mountPath: /etc/kube-federated-auth/tokens
           readOnly: true
@@ -86,22 +86,22 @@ spec:
           name: {{ .Release.Name }}-kfa-ca-certs
       {{- else if .Values.kubeFederatedAuth.remoteClusters }}
       - name: kfa-ca-certs
-        secret:
-          secretName: {{ .Release.Name }}-kfa-certs
+        configMap:
+          name: {{ .Release.Name }}-kfa-certs
           items:
           {{- range .Values.kubeFederatedAuth.remoteClusters }}
           - key: {{ .name }}-ca.crt
             path: {{ .name }}-ca.crt
           {{- end }}
       {{- end }}
-      {{- if .Values.kubeFederatedAuth.remoteClusters }}
+      {{- if .Values.kubeFederatedAuth.tokens.items }}
       - name: kfa-tokens
         secret:
-          secretName: {{ .Release.Name }}-kfa-tokens
+          secretName: {{ .Values.kubeFederatedAuth.tokens.secretName | default (printf "%s-kfa-tokens" .Release.Name) }}
           items:
-          {{- range .Values.kubeFederatedAuth.remoteClusters }}
-          - key: {{ .name }}-token
-            path: {{ .name }}-token
+          {{- range .Values.kubeFederatedAuth.tokens.items }}
+          - key: {{ . }}
+            path: {{ . }}
           {{- end }}
       {{- end }}
 {{- end }}

@@ -1,4 +1,5 @@
 {{- if .Values.kubeFederatedAuth.enabled }}
+{{- if .Values.kubeFederatedAuth.rbac.createClusterRole }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -30,6 +31,7 @@ subjects:
   name: {{ .Values.serviceAccount.name }}
   namespace: {{ .Release.Namespace }}
 ---
+{{- end }}
 # Role for persisting renewed remote-cluster tokens to a namespaced Secret.
 # kube-federated-auth reads and writes this Secret during credential renewal
 # (internal/credentials/store.go: loadFromSecret / saveToSecret).

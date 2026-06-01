@@ -8,6 +8,9 @@ metadata:
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 data:
   clusters.yaml: |
+{{- if .Files.Glob "files/clusters.yaml" }}
+{{ .Files.Get "files/clusters.yaml" | indent 4 }}
+{{- else }}
     authorized_clients:
     {{- range .Values.kubeFederatedAuth.authorizedClients }}
       - {{ . | quote }}
@@ -36,6 +39,7 @@ data:
         ca_cert: "/etc/kube-federated-auth/ca-certs/{{ .name }}-ca.crt"
         token_path: "/etc/kube-federated-auth/tokens/{{ .name }}-token"
     {{- end }}
+{{- end }}
 ---
 {{- end }}
 {{- if .Values.aqsh.configMap.create }}
@@ -143,5 +147,26 @@ data:
   {{ base $path }}: |
 {{ $content | toString | indent 4 }}
 {{- end }}
+{{- end }}
+{{- $hasCerts := false }}
+{{- range .Values.kubeFederatedAuth.remoteClusters }}
+{{- if .caCert }}{{- $hasCerts = true }}{{- end }}
+{{- end }}
+{{- if $hasCerts }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-kfa-certs
+  labels:
+    app: kube-federated-auth-aqsh
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+  {{- range .Values.kubeFederatedAuth.remoteClusters }}
+  {{- if .caCert }}
+  {{ .name }}-ca.crt: |
+{{ .caCert | indent 4 }}
+  {{- end }}
+  {{- end }}
 {{- end }}
 {{- end }}
