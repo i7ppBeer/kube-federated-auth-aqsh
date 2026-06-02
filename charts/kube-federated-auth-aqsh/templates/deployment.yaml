@@ -48,16 +48,25 @@ spec:
       - name: kube-federated-auth
         image: "{{ .Values.kubeFederatedAuth.image.repository }}:{{ .Values.kubeFederatedAuth.image.tag }}"
         imagePullPolicy: {{ .Values.kubeFederatedAuth.image.pullPolicy }}
-        args:
-        - --config=/etc/kube-federated-auth/clusters.yaml
-        - --port=8443
-        - --secret-name={{ .Release.Name }}-kfa-credentials
+        env:
+        - name: CONFIG_PATH
+          value: /etc/kube-federated-auth/clusters.yaml
+        - name: PORT
+          value: {{ .Values.kubeFederatedAuth.service.port | quote }}
+        - name: SECRET_NAME
+          value: {{ .Release.Name }}-kfa-credentials
+        - name: NAMESPACE
+          value: {{ .Release.Namespace }}
         ports:
         - containerPort: 8443
           name: http
           protocol: TCP
         resources:
           {{- toYaml .Values.kubeFederatedAuth.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.kubeFederatedAuth.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.kubeFederatedAuth.readinessProbe | nindent 10 }}
         volumeMounts:
         - name: kfa-config
           mountPath: /etc/kube-federated-auth
