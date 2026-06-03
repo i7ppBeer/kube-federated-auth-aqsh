@@ -173,6 +173,17 @@ aqsh:
   # If empty, defaults to "<release>-redis:<redis.service.port>".
   redisAddr: ""
 
+  # AQSH environment variable defaults.
+  bind: "0.0.0.0:8080"
+  tasksConfig: "/etc/aqsh/tasks.yaml"
+  tasksDir: "/tasks"
+  resultsDir: "/var/lib/aqsh/results"
+  redisSentinelAddrs: ""
+  redisSentinelMaster: "mymaster"
+  redisPassword: ""
+  workerConcurrency: 10
+  workerQueues: "default"
+
   image:
     repository: null-ptr-exception/aqsh
     tag: latest
@@ -206,7 +217,23 @@ aqsh:
   # Identity and group headers (from reverse proxy / kube-auth-proxy)
   identityHeader: "X-Forwarded-User"
   groupsHeader: "X-Forwarded-Groups"
-  requireIdentity: true
+  requireIdentity: false
+  logRetention: "24h"
+  resultRetention: ""
+
+  livenessProbe:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 3
+
+  readinessProbe:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
 
   # Optional top-level defaults applied to all tasks (mounted at /etc/aqsh/tasks.yaml).
   # These values are used when a task does not define them explicitly.
@@ -243,6 +270,10 @@ aqsh:
   #   #!/bin/bash
   #   set -euo pipefail
   #   echo "Deploying $VERSION to $ENVIRONMENT (submitter: $AQSH_SUBMITTER)"
+
+  # Mount paths for aqsh config and scripts volumes.
+  configMountPath: "/etc/aqsh"
+  scriptsMountPath: "/scripts"
 
   # Mount scripts ConfigMap even when scripts are not defined inline in values.
   # Useful for parent/wrapper charts that create <release>-aqsh-scripts via files/.

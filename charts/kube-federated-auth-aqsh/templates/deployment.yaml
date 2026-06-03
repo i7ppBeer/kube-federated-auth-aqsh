@@ -167,21 +167,47 @@ spec:
         imagePullPolicy: {{ .Values.aqsh.image.pullPolicy }}
         env:
         - name: AQSH_MODE
-          value: {{ .Values.aqsh.mode | quote }}
+          value: {{ .Values.aqsh.mode | default "both" | quote }}
+        - name: AQSH_BIND
+          value: {{ .Values.aqsh.bind | default "0.0.0.0:8080" | quote }}
+        - name: AQSH_TASKS_CONFIG
+          value: {{ .Values.aqsh.tasksConfig | default "/etc/aqsh/tasks.yaml" | quote }}
+        - name: AQSH_TASKS_DIR
+          value: {{ .Values.aqsh.tasksDir | default "/tasks" | quote }}
+        - name: AQSH_RESULTS_DIR
+          value: {{ .Values.aqsh.resultsDir | default "/var/lib/aqsh/results" | quote }}
         - name: AQSH_REDIS_ADDR
           {{- if .Values.aqsh.redisAddr }}
           value: {{ .Values.aqsh.redisAddr | quote }}
           {{- else }}
-          value: "{{ .Release.Name }}-redis:{{ .Values.redis.service.port }}"
+          value: "localhost:6379"
           {{- end }}
+        {{- if .Values.aqsh.redisSentinelAddrs }}
+        - name: AQSH_REDIS_SENTINEL_ADDRS
+          value: {{ .Values.aqsh.redisSentinelAddrs | quote }}
+        {{- end }}
+        - name: AQSH_REDIS_SENTINEL_MASTER
+          value: {{ .Values.aqsh.redisSentinelMaster | default "mymaster" | quote }}
+        {{- if .Values.aqsh.redisPassword }}
+        - name: AQSH_REDIS_PASSWORD
+          value: {{ .Values.aqsh.redisPassword | quote }}
+        {{- end }}
+        - name: AQSH_WORKER_CONCURRENCY
+          value: {{ .Values.aqsh.workerConcurrency | default 10 | quote }}
+        - name: AQSH_WORKER_QUEUES
+          value: {{ .Values.aqsh.workerQueues | default "default" | quote }}
         - name: AQSH_IDENTITY_HEADER
           value: {{ .Values.aqsh.identityHeader | quote }}
         - name: AQSH_GROUPS_HEADER
           value: {{ .Values.aqsh.groupsHeader | quote }}
         - name: AQSH_REQUIRE_IDENTITY
-          value: {{ .Values.aqsh.requireIdentity | quote }}
-        - name: AQSH_TASKS_CONFIG
-          value: "/etc/aqsh/tasks.yaml"
+          value: {{ .Values.aqsh.requireIdentity | default false | quote }}
+        - name: AQSH_LOG_RETENTION
+          value: {{ .Values.aqsh.logRetention | default "24h" | quote }}
+        {{- if .Values.aqsh.resultRetention }}
+        - name: AQSH_RESULT_RETENTION
+          value: {{ .Values.aqsh.resultRetention | quote }}
+        {{- end }}
         {{- with .Values.aqsh.extraEnvFrom }}
         envFrom:
           {{- toYaml . | nindent 10 }}
@@ -190,15 +216,19 @@ spec:
         - containerPort: 8080
           name: http
           protocol: TCP
+        livenessProbe:
+          {{- toYaml .Values.aqsh.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.aqsh.readinessProbe | nindent 10 }}
         resources:
           {{- toYaml .Values.aqsh.resources | nindent 10 }}
         volumeMounts:
         - name: aqsh-config
-          mountPath: /etc/aqsh
+          mountPath: {{ .Values.aqsh.configMountPath | default "/etc/aqsh" | quote }}
           readOnly: true
         {{- if or .Values.aqsh.scripts .Values.aqsh.scriptsConfigMap.enabled }}
         - name: aqsh-scripts
-          mountPath: /scripts
+          mountPath: {{ .Values.aqsh.scriptsMountPath | default "/scripts" | quote }}
           readOnly: true
         {{- end }}
       {{- if .Values.kubeAuthProxy.enabled }}

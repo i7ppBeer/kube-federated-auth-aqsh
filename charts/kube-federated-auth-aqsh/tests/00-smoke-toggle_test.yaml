@@ -84,3 +84,145 @@ tests:
         documentSelector:
           path: metadata.name
           value: smoke-aqsh
+
+  - it: renders aqsh env defaults when values are not overridden
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_BIND
+            value: 0.0.0.0:8080
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_TASKS_CONFIG
+            value: /etc/aqsh/tasks.yaml
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_WORKER_CONCURRENCY
+            value: "10"
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_LOG_RETENTION
+            value: 24h
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: renders aqsh liveness and readiness probes
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.tcpSocket.port
+          value: http
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+          value: http
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: renders configurable aqsh mount paths
+    set:
+      aqsh:
+        configMountPath: /custom/aqsh
+        scripts:
+          deploy.sh: |
+            #!/bin/sh
+            echo deploy
+        scriptsMountPath: /custom/scripts
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: aqsh-config
+            mountPath: /custom/aqsh
+            readOnly: true
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: aqsh-scripts
+            mountPath: /custom/scripts
+            readOnly: true
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: renders optional aqsh env values when configured
+    set:
+      aqsh:
+        redisAddr: redis.example.svc.cluster.local:6379
+        redisSentinelAddrs: 10.0.0.1:26379,10.0.0.2:26379
+        redisPassword: secretpass
+        resultRetention: 72h
+        requireIdentity: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REDIS_ADDR
+            value: redis.example.svc.cluster.local:6379
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REDIS_SENTINEL_ADDRS
+            value: 10.0.0.1:26379,10.0.0.2:26379
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REDIS_PASSWORD
+            value: secretpass
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_RESULT_RETENTION
+            value: 72h
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REQUIRE_IDENTITY
+            value: "true"
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
