@@ -1,0 +1,38 @@
+suite: wrapper pass through behavior
+release:
+  name: smoke
+templates:
+  - charts/kube-federated-auth-aqsh/templates/deployment.yaml
+  - charts/kube-federated-auth-aqsh/templates/service.yaml
+  - charts/kube-federated-auth-aqsh/templates/redis-deployment.yaml
+tests:
+  - it: routes aqsh service through proxy by default in wrapper values
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 4180
+        template: charts/kube-federated-auth-aqsh/templates/service.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: disables redis resources and keeps external redis target for aqsh
+    set:
+      kube-federated-auth-aqsh:
+        redis:
+          enabled: false
+        aqsh:
+          redisAddr: redis.external.svc.cluster.local:6379
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: charts/kube-federated-auth-aqsh/templates/redis-deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REDIS_ADDR
+            value: redis.external.svc.cluster.local:6379
+        template: charts/kube-federated-auth-aqsh/templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh

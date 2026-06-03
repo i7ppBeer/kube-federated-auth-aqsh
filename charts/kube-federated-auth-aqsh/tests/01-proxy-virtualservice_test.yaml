@@ -1,0 +1,77 @@
+suite: main chart proxy and virtualservice
+release:
+  name: smoke
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/virtualservice.yaml
+tests:
+  - it: routes aqsh service to proxy port when kubeAuthProxy is enabled
+    set:
+      kubeAuthProxy:
+        enabled: true
+        port: 4180
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 4180
+        template: templates/service.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - equal:
+          path: spec.ports[0].name
+          value: http-proxy
+        template: templates/service.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: kube-auth-proxy
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: keeps aqsh direct service port when kubeAuthProxy is disabled
+    set:
+      kubeAuthProxy:
+        enabled: false
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        template: templates/service.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - equal:
+          path: spec.ports[0].name
+          value: http
+        template: templates/service.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+
+  - it: sends virtualservice route to proxy port when proxy and istio are enabled
+    set:
+      kubeAuthProxy:
+        enabled: true
+        port: 9999
+      istio:
+        virtualService:
+          enabled: true
+          hosts:
+            - aqsh.example.com
+          gateways:
+            - istio-system/ingressgateway
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/virtualservice.yaml
+      - equal:
+          path: spec.http[0].route[0].destination.port.number
+          value: 9999
+        template: templates/virtualservice.yaml
+        documentIndex: 0

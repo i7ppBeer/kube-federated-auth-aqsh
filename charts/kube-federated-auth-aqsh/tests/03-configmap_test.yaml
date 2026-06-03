@@ -1,0 +1,45 @@
+suite: main chart configmap creation
+release:
+  name: smoke
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: renders both kfa and aqsh configmaps by default
+    asserts:
+      - equal:
+          path: metadata.name
+          value: smoke-kfa-config
+        template: templates/configmap.yaml
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh-config
+        template: templates/configmap.yaml
+        documentIndex: 1
+
+  - it: does not render kfa configmap when kubeFederatedAuth.configMap.create is false
+    set:
+      kubeFederatedAuth:
+        configMap:
+          create: false
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/configmap.yaml
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh-config
+        template: templates/configmap.yaml
+        documentIndex: 0
+
+  - it: does not render aqsh configmap when aqsh.configMap.create is false
+    set:
+      aqsh:
+        configMap:
+          create: false
+    asserts:
+      - equal:
+          path: metadata.name
+          value: smoke-kfa-config
+        template: templates/configmap.yaml
+        documentIndex: 0

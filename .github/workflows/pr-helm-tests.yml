@@ -1,0 +1,63 @@
+name: PR Helm Tests
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - charts/**
+      - examples/wrapper-chart/**
+      - .github/workflows/**
+      - README.md
+      - README_SIMPLE.md
+  workflow_dispatch:
+
+concurrency:
+  group: pr-helm-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  helm-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Install helm-unittest plugin
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.5.1
+          helm unittest --help >/dev/null
+
+      - name: Build wrapper dependencies
+        run: helm dependency build examples/wrapper-chart
+
+      - name: Lint main chart
+        run: helm lint charts/kube-federated-auth-aqsh --strict
+
+      - name: Lint wrapper chart
+        run: helm lint examples/wrapper-chart --strict
+
+      - name: Test main chart
+        run: helm unittest charts/kube-federated-auth-aqsh
+
+      - name: Test wrapper chart
+        run: helm unittest examples/wrapper-chart
+
+      - name: Smoke render main chart
+        run: |
+          helm template smoke charts/kube-federated-auth-aqsh > /tmp/main-render.yaml
+          grep -q "name: smoke-kube-federated-auth" /tmp/main-render.yaml
+          grep -q "name: smoke-aqsh" /tmp/main-render.yaml
+
+      - name: Smoke render wrapper chart
+        run: |
+          helm template smoke examples/wrapper-chart > /tmp/wrapper-render.yaml
+          grep -q "name: smoke-kfa-config" /tmp/wrapper-render.yaml
+          grep -q "name: smoke-aqsh-config" /tmp/wrapper-render.yaml

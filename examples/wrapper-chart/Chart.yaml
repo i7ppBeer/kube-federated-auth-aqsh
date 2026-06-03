@@ -6,5 +6,5 @@ description: |
 version: 0.1.0
 dependencies:
   - name: kube-federated-auth-aqsh
-    version: ">=0.1.0"
-    repository: "https://i7ppBeer.github.io/kube-federated-auth-aqsh"
+    version: "1.0.0"
+    repository: "file://../../charts/kube-federated-auth-aqsh"

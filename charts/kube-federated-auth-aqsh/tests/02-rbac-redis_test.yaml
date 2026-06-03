@@ -1,0 +1,62 @@
+suite: main chart rbac and redis persistence
+release:
+  name: smoke
+templates:
+  - templates/rbac.yaml
+  - templates/redis-pvc.yaml
+  - templates/redis-deployment.yaml
+tests:
+  - it: renders cluster role and binding by default
+    asserts:
+      - hasDocuments:
+          count: 4
+        template: templates/rbac.yaml
+
+  - it: skips cluster role resources when createClusterRole is false
+    set:
+      kubeFederatedAuth:
+        rbac:
+          createClusterRole: false
+    asserts:
+      - hasDocuments:
+          count: 2
+        template: templates/rbac.yaml
+      - equal:
+          path: kind
+          value: Role
+        template: templates/rbac.yaml
+        documentIndex: 0
+      - equal:
+          path: kind
+          value: RoleBinding
+        template: templates/rbac.yaml
+        documentIndex: 1
+
+  - it: renders redis pvc and redis data mount when persistence is enabled
+    set:
+      redis:
+        persistence:
+          enabled: true
+          storageClass: fast-ssd
+          size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/redis-pvc.yaml
+      - equal:
+          path: spec.resources.requests.storage
+          value: 10Gi
+        template: templates/redis-pvc.yaml
+        documentIndex: 0
+      - equal:
+          path: spec.storageClassName
+          value: fast-ssd
+        template: templates/redis-pvc.yaml
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: redis-data
+            mountPath: /data
+        template: templates/redis-deployment.yaml
+        documentIndex: 0

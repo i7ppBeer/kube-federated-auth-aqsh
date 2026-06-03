@@ -33,7 +33,7 @@ kubeFederatedAuth:
     create: true
 
   image:
-    repository: rophy/kube-federated-auth
+    repository: null-ptr-exception/kube-federated-auth
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -174,7 +174,7 @@ aqsh:
   redisAddr: ""
 
   image:
-    repository: rophy/aqsh
+    repository: null-ptr-exception/aqsh
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -275,7 +275,7 @@ kubeAuthProxy:
   tokenReviewUrl: ""
 
   image:
-    repository: ghcr.io/rophy/kube-auth-proxy
+    repository: ghcr.io/null-ptr-exception/kube-auth-proxy
     tag: latest
     pullPolicy: IfNotPresent
 

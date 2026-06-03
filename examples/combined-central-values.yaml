@@ -5,7 +5,7 @@ replicaCount: 1
 
 kubeFederatedAuth:
   image:
-    repository: rophy/kube-federated-auth
+    repository: null-ptr-exception/kube-federated-auth
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -91,7 +91,7 @@ kubeFederatedAuth:
 
 aqsh:
   image:
-    repository: rophy/aqsh
+    repository: null-ptr-exception/aqsh
     tag: latest
     pullPolicy: IfNotPresent
 

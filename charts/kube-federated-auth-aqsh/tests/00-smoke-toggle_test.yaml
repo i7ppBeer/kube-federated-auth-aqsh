@@ -1,0 +1,86 @@
+suite: main chart smoke toggles
+release:
+  name: smoke
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/redis-deployment.yaml
+  - templates/redis-service.yaml
+tests:
+  - it: renders all core deployments and services by default
+    asserts:
+      - equal:
+          path: metadata.name
+          value: smoke-kube-federated-auth
+        documentSelector:
+          path: metadata.name
+          value: smoke-kube-federated-auth
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh
+      - hasDocuments:
+          count: 1
+        template: templates/redis-deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: templates/redis-service.yaml
+
+  - it: disables kube-federated-auth resources when kubeFederatedAuth.enabled is false
+    set:
+      kubeFederatedAuth:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: templates/service.yaml
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh
+        template: templates/deployment.yaml
+        documentIndex: 0
+
+  - it: disables aqsh resources when aqsh.enabled is false
+    set:
+      aqsh:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: templates/service.yaml
+      - equal:
+          path: metadata.name
+          value: smoke-kube-federated-auth
+        template: templates/deployment.yaml
+        documentIndex: 0
+
+  - it: disables redis resources and sets external redis address
+    set:
+      redis:
+        enabled: false
+      aqsh:
+        redisAddr: external-redis.default.svc.cluster.local:6379
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: templates/redis-deployment.yaml
+      - hasDocuments:
+          count: 0
+        template: templates/redis-service.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AQSH_REDIS_ADDR
+            value: external-redis.default.svc.cluster.local:6379
+        template: templates/deployment.yaml
+        documentSelector:
+          path: metadata.name
+          value: smoke-aqsh

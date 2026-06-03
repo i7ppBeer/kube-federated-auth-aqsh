@@ -1,0 +1,51 @@
+suite: wrapper configmap ownership
+release:
+  name: smoke
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: renders wrapper managed kfa and aqsh configmaps by default
+    asserts:
+      - hasDocuments:
+          count: 3
+        template: templates/configmap.yaml
+      - equal:
+          path: metadata.name
+          value: smoke-kfa-config
+        template: templates/configmap.yaml
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh-config
+        template: templates/configmap.yaml
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: smoke-aqsh-scripts
+        template: templates/configmap.yaml
+        documentIndex: 2
+
+  - it: skips wrapper kfa configmap when subchart kubeFederatedAuth is disabled
+    set:
+      kube-federated-auth-aqsh:
+        kubeFederatedAuth:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 2
+        template: templates/configmap.yaml
+
+  - it: skips wrapper aqsh configmaps when subchart aqsh is disabled
+    set:
+      kube-federated-auth-aqsh:
+        aqsh:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/configmap.yaml
+      - equal:
+          path: metadata.name
+          value: smoke-kfa-config
+        template: templates/configmap.yaml
+        documentIndex: 0
